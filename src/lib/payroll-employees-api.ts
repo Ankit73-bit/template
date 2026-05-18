@@ -1,0 +1,93 @@
+import {
+  parsePayrollEmployees,
+  type PayrollEmployee,
+  type PayrollEmployeeFormAddValues,
+  type PayrollEmployeeFormValues,
+} from "@/lib/payroll-employee-schema";
+
+const BASE = "/api/payroll-employees";
+
+function errorMessageFromResponse(data: unknown, fallback: string): string {
+  if (data && typeof data === "object" && "error" in data) {
+    const e = (data as { error?: unknown }).error;
+    if (typeof e === "string" && e.trim()) return e;
+  }
+  return fallback;
+}
+
+export async function listPayrollEmployees(): Promise<PayrollEmployee[]> {
+  const res = await fetch(BASE, { cache: "no-store" });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(errorMessageFromResponse(data, "Failed to load employees."));
+  }
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  return parsePayrollEmployees(data);
+}
+
+export async function createPayrollEmployee(
+  values: PayrollEmployeeFormAddValues,
+): Promise<{ ok: true; created: PayrollEmployee } | { ok: false; error: string }> {
+  const res = await fetch(BASE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(values),
+  });
+  const data: unknown = await res.json().catch(() => null);
+  if (res.status === 409) {
+    return { ok: false, error: errorMessageFromResponse(data, "Employee ID already exists.") };
+  }
+  if (!res.ok) {
+    return { ok: false, error: errorMessageFromResponse(data, "Failed to create employee.") };
+  }
+  const list = parsePayrollEmployees([data]);
+  const created = list[0];
+  if (!created) {
+    return { ok: false, error: "Invalid response from server." };
+  }
+  return { ok: true, created };
+}
+
+export async function updatePayrollEmployee(
+  id: string,
+  values: PayrollEmployeeFormValues,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(values),
+  });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    return { ok: false, error: errorMessageFromResponse(data, "Failed to save changes.") };
+  }
+  return { ok: true };
+}
+
+export async function archivePayrollEmployee(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    return { ok: false, error: errorMessageFromResponse(data, "Failed to archive employee.") };
+  }
+  return { ok: true };
+}
+
+export async function restorePayrollEmployee(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "restore" }),
+  });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    return { ok: false, error: errorMessageFromResponse(data, "Failed to restore employee.") };
+  }
+  return { ok: true };
+}

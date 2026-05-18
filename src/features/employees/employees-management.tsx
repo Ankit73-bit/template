@@ -1,0 +1,276 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Table } from "@tanstack/react-table";
+import Link from "next/link";
+import { Plus, Users } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table/data-table";
+import { EmptyState } from "@/components/empty-state";
+import { EmployeeFormDrawer } from "@/features/employees/employee-form-drawer";
+import { EmployeeDeleteDialog } from "@/features/employees/employee-delete-dialog";
+import { createPayrollEmployeeColumns } from "@/features/employees/payroll-employee-table-columns";
+import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
+import type { PayrollEmployeeFormValues } from "@/lib/payroll-employee-schema";
+import {
+  archivePayrollEmployee,
+  listPayrollEmployees,
+  restorePayrollEmployee,
+  updatePayrollEmployee,
+} from "@/lib/payroll-employees-api";
+import { uniqueBranchesFromEmployees } from "@/lib/payroll-employees-logic";
+
+function BranchFilter({
+  table,
+  branches,
+}: {
+  table: Table<PayrollEmployee>;
+  branches: string[];
+}) {
+  const column = table.getColumn("branchOrSite");
+  if (!column) return null;
+  return (
+    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span className="whitespace-nowrap">Branch</span>
+      <select
+        className="h-9 max-w-[160px] rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+        value={(column.getFilterValue() as string) ?? "all"}
+        onChange={(e) =>
+          column.setFilterValue(e.target.value === "all" ? undefined : e.target.value)
+        }
+      >
+        <option value="all">All branches</option>
+        {branches.map((b) => (
+          <option key={b} value={b}>
+            {b}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function StatusFilter({ table }: { table: Table<PayrollEmployee> }) {
+  const column = table.getColumn("employmentStatus");
+  if (!column) return null;
+  return (
+    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span className="whitespace-nowrap">Status</span>
+      <select
+        className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+        value={(column.getFilterValue() as string) ?? "all"}
+        onChange={(e) =>
+          column.setFilterValue(e.target.value === "all" ? undefined : e.target.value)
+        }
+      >
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </label>
+  );
+}
+
+export function EmployeesManagement() {
+  const [employees, setEmployees] = useState<PayrollEmployee[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<PayrollEmployee | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PayrollEmployee | null>(null);
+  const [includeArchived, setIncludeArchived] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const list = await listPayrollEmployees();
+      setEmployees(list);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load employees.");
+      setEmployees([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void refresh().finally(() => setHydrated(true));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [refresh]);
+
+  const branches = useMemo(() => uniqueBranchesFromEmployees(employees), [employees]);
+
+  const tableData = useMemo(
+    () =>
+      employees.filter(
+        (e) => includeArchived || e.deletedAt === null,
+      ),
+    [employees, includeArchived],
+  );
+
+  const onEdit = useCallback((row: PayrollEmployee) => {
+    setSelectedEmployee(row);
+    setDrawerOpen(true);
+  }, []);
+
+  const onArchive = useCallback((row: PayrollEmployee) => {
+    setDeleteTarget(row);
+    setDeleteOpen(true);
+  }, []);
+
+  const onRestore = useCallback(
+    async (row: PayrollEmployee) => {
+      const result = await restorePayrollEmployee(row.id);
+      if (!result.ok) {
+        window.alert(result.error);
+        return;
+      }
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const columns = useMemo(
+    () =>
+      createPayrollEmployeeColumns({
+        onEdit,
+        onArchive,
+        onRestore,
+      }),
+    [onEdit, onArchive, onRestore],
+  );
+
+  const handleEdit = useCallback(
+    async (values: PayrollEmployeeFormValues) => {
+      const id = selectedEmployee?.id;
+      if (!id) return;
+      const result = await updatePayrollEmployee(id, values);
+      if (!result.ok) {
+        window.alert(result.error);
+        return;
+      }
+      await refresh();
+    },
+    [selectedEmployee?.id, refresh],
+  );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    const result = await archivePayrollEmployee(deleteTarget.id);
+    if (!result.ok) {
+      window.alert(result.error);
+      return;
+    }
+    setDeleteTarget(null);
+    await refresh();
+  }, [deleteTarget, refresh]);
+
+  if (!hydrated) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8">
+        <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
+        <div className="h-64 animate-pulse rounded-lg bg-muted/60" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground md:text-base">
+            Manage roster, compensation, and employment status. Records are stored in MongoDB
+            (collection <code className="rounded bg-muted px-1 text-xs">payroll_employees</code>).
+          </p>
+        </div>
+        <Button className="shrink-0 gap-2" asChild>
+          <Link href="/employees/add">
+            <Plus className="h-4 w-4" />
+            Add employee
+          </Link>
+        </Button>
+      </div>
+
+      {loadError ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </p>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Workforce directory</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="overflow-x-auto rounded-md border border-border [-webkit-overflow-scrolling:touch]">
+            <DataTable
+              columns={columns}
+              data={tableData}
+              enableGlobalFilter
+              globalFilterPlaceholder="Search name, ID, email, phone, designation…"
+              pageSize={8}
+              pageSizeOptions={[8, 16, 24]}
+              toolbarExtras={(table) => (
+                <>
+                  <BranchFilter table={table} branches={branches} />
+                  <StatusFilter table={table} />
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-input"
+                      checked={includeArchived}
+                      onChange={(e) => setIncludeArchived(e.target.checked)}
+                    />
+                    Include archived
+                  </label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
+                    Refresh
+                  </Button>
+                </>
+              )}
+              emptyState={
+                <EmptyState
+                  icon={Users}
+                  title={loadError ? "Could not load employees" : "No employees match filters"}
+                  description={
+                    loadError
+                      ? "Fix the connection issue above, then use Refresh."
+                      : "Clear search and filters, or include archived records."
+                  }
+                />
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <EmployeeFormDrawer
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) setSelectedEmployee(null);
+        }}
+        employee={selectedEmployee}
+        onEdit={handleEdit}
+      />
+
+      <EmployeeDeleteDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteTarget(null);
+        }}
+        employee={deleteTarget}
+        onConfirm={handleDeleteConfirm}
+      />
+    </div>
+  );
+}

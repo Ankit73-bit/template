@@ -1,30 +1,10 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
+import { isMongoConnectionError, MONGO_UNAVAILABLE } from "@/lib/mongo-api-errors";
 import { payslipFieldKeys, type PayslipData } from "@/lib/payslip-data";
 
 const COLLECTION = "employees";
-
-const MONGO_UNAVAILABLE =
-  "Cannot connect to MongoDB. Start MongoDB locally (mongod) or set MONGODB_URI in .env to your Atlas connection string.";
-
-function isMongoConnectionError(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-  const e = error as { name?: string; code?: string | number; cause?: unknown };
-  if (e.name === "MongoServerSelectionError" || e.name === "MongoNetworkError") {
-    return true;
-  }
-  if (e.code === "ECONNREFUSED") {
-    return true;
-  }
-  if (e.cause && typeof e.cause === "object") {
-    const c = e.cause as { code?: string };
-    return c.code === "ECONNREFUSED";
-  }
-  return false;
-}
 
 type EmployeeDoc = PayslipData & { _id: ObjectId; createdAt: Date };
 

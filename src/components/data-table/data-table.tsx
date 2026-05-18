@@ -1,0 +1,229 @@
+"use client";
+
+import type { ReactNode } from "react";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  FilterFn,
+  SortingState,
+  Table as TanstackTable,
+  VisibilityState,
+} from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { DataTableToolbar } from "./data-table-toolbar";
+
+type DataTableProps<TData, TValue> = {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  searchKey?: keyof TData & string;
+  searchPlaceholder?: string;
+  enableGlobalFilter?: boolean;
+  globalFilterPlaceholder?: string;
+  globalFilterFn?: FilterFn<TData>;
+  filterSlot?: ReactNode;
+  toolbarExtras?: (table: TanstackTable<TData>) => ReactNode;
+  emptyState?: ReactNode;
+  className?: string;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  showPaginationInfo?: boolean;
+};
+
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  searchKey,
+  searchPlaceholder,
+  enableGlobalFilter,
+  globalFilterPlaceholder,
+  globalFilterFn,
+  filterSlot,
+  toolbarExtras,
+  emptyState,
+  className,
+  pageSize = 8,
+  pageSizeOptions,
+  showPaginationInfo = true,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  // TanStack Table returns unstable function references; React Compiler skips memoization here.
+  // eslint-disable-next-line react-hooks/incompatible-library -- useReactTable is the supported API
+  const table = useReactTable<TData>({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      ...(enableGlobalFilter ? { globalFilter } : {}),
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    ...(enableGlobalFilter
+      ? {
+          onGlobalFilterChange: setGlobalFilter,
+          globalFilterFn:
+            globalFilterFn ??
+            ((row, _columnId, filterValue: unknown) => {
+              const q = String(filterValue ?? "")
+                .toLowerCase()
+                .trim();
+              if (!q) return true;
+              const hay = Object.values(row.original as Record<string, unknown>)
+                .filter((v) => typeof v === "string" || typeof v === "number")
+                .join(" ")
+                .toLowerCase();
+              return hay.includes(q);
+            }),
+        }
+      : {}),
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: { pageSize },
+    },
+  });
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      <DataTableToolbar
+        table={table}
+        searchKey={searchKey}
+        searchPlaceholder={searchPlaceholder}
+        enableGlobalFilter={enableGlobalFilter}
+        globalFilterPlaceholder={globalFilterPlaceholder}
+        filterSlot={filterSlot}
+        toolbarExtras={toolbarExtras?.(table)}
+      />
+      <div className="rounded-md border border-border bg-card">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-32 text-center"
+                >
+                  {emptyState ?? (
+                    <span className="text-sm text-muted-foreground">
+                      No results.
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          <span>{table.getFilteredRowModel().rows.length} row(s)</span>
+          {showPaginationInfo && (
+            <>
+              <span aria-hidden>·</span>
+              <span>
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {Math.max(1, table.getPageCount())}
+              </span>
+            </>
+          )}
+          {pageSizeOptions && pageSizeOptions.length > 0 && (
+            <label className="ml-0 flex items-center gap-2 sm:ml-2">
+              <span className="sr-only sm:not-sr-only sm:inline">Rows per page</span>
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+                value={table.getState().pagination.pageSize}
+                onChange={(e) => {
+                  table.setPageSize(Number(e.target.value));
+                  table.setPageIndex(0);
+                }}
+              >
+                {pageSizeOptions.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
