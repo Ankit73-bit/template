@@ -87,22 +87,22 @@ async function main() {
       failed++;
       continue;
     }
-    const want = zod.data.customEmployeeId.trim().toLowerCase();
-    if (want && workingList.some((e) => e.employeeId.trim().toLowerCase() === want)) {
+    const want = zod.data.agencyIdNo.trim().toLowerCase();
+    if (want && workingList.some((e) => e.agencyIdNo.trim().toLowerCase() === want)) {
       skipped++;
-      console.log(`  Skip (exists): ${zod.data.fullName} · ${zod.data.customEmployeeId}`);
+      console.log(`  Skip (exists): ${zod.data.nameOfEmployee} · ${zod.data.agencyIdNo}`);
       continue;
     }
     const result = createEmployeeWithAutoId(workingList, zod.data);
     if ("error" in result) {
       failed++;
-      console.log(`  Fail: ${zod.data.fullName} — ${result.error}`);
+      console.log(`  Fail: ${zod.data.nameOfEmployee} — ${result.error}`);
       continue;
     }
     workingList = [...workingList, result.created];
     toInsert.push(result.created);
     imported++;
-    console.log(`  + ${result.created.employeeId} — ${result.created.fullName}`);
+    console.log(`  + ${result.created.agencyIdNo} — ${result.created.nameOfEmployee}`);
   }
 
   if (toInsert.length > 0) {

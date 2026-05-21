@@ -25,7 +25,7 @@ import {
   restorePayrollEmployee,
   updatePayrollEmployee,
 } from "@/lib/payroll-employees-api";
-import { uniqueBranchesFromEmployees } from "@/lib/payroll-employees-logic";
+import { uniqueSitesFromEmployees } from "@/lib/payroll-employees-logic";
 
 function BranchFilter({
   table,
@@ -34,11 +34,11 @@ function BranchFilter({
   table: Table<PayrollEmployee>;
   branches: string[];
 }) {
-  const column = table.getColumn("branchOrSite");
+  const column = table.getColumn("siteName");
   if (!column) return null;
   return (
     <label className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span className="whitespace-nowrap">Branch</span>
+      <span className="whitespace-nowrap">SITE NAME</span>
       <select
         className="h-9 max-w-[160px] rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
         value={(column.getFilterValue() as string) ?? "all"}
@@ -46,7 +46,7 @@ function BranchFilter({
           column.setFilterValue(e.target.value === "all" ? undefined : e.target.value)
         }
       >
-        <option value="all">All branches</option>
+        <option value="all">All sites</option>
         {branches.map((b) => (
           <option key={b} value={b}>
             {b}
@@ -107,7 +107,7 @@ export function EmployeesManagement() {
     return () => window.clearTimeout(id);
   }, [refresh]);
 
-  const branches = useMemo(() => uniqueBranchesFromEmployees(employees), [employees]);
+  const branches = useMemo(() => uniqueSitesFromEmployees(employees), [employees]);
 
   const tableData = useMemo(
     () =>
@@ -223,14 +223,14 @@ export function EmployeesManagement() {
           <CardTitle>Workforce directory</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-x-auto rounded-md border border-border [-webkit-overflow-scrolling:touch]">
+          <div className="overflow-x-auto rounded-lg border border-sky-200/70 bg-card shadow-sm [-webkit-overflow-scrolling:touch] dark:border-sky-900/40 [&_table]:min-w-max [&_thead]:bg-sky-100/90 [&_th]:whitespace-nowrap [&_th]:border-sky-200/60 [&_th]:px-2 [&_th]:py-2.5 [&_td]:px-2 [&_td]:py-2 dark:[&_thead]:bg-sky-950/80 dark:[&_th]:border-sky-800/60">
             <DataTable
               columns={columns}
               data={tableData}
               enableGlobalFilter
-              globalFilterPlaceholder="Search name, ID, email, phone, designation…"
-              pageSize={8}
-              pageSizeOptions={[8, 16, 24]}
+              globalFilterPlaceholder="Search NAME OF EMPLOYEE, AGENCY ID NO, PHONE NUMBER, SITE NAME…"
+              pageSize={5}
+              pageSizeOptions={[5, 10, 20]}
               toolbarExtras={(table) => (
                 <>
                   <BranchFilter table={table} branches={branches} />

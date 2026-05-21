@@ -22,7 +22,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { EmployeeFullFormFields } from "@/features/employees/employee-form-sections";
+import { EmployeeMasterFormFields } from "@/features/employees/employee-master-form-fields";
+import { labelForMasterField } from "@/lib/payroll-employee-master-fields";
 import {
   emptyPayrollEmployeeFormValues,
   payrollEmployeeFormSchema,
@@ -77,7 +78,7 @@ export function EmployeeFormDrawer({
         <DrawerHeader className="shrink-0 text-left">
           <DrawerTitle>Edit employee</DrawerTitle>
           <DrawerDescription>
-            Update employee details. The employee ID cannot be changed.
+            Update master sheet fields. {labelForMasterField("agencyIdNo")} cannot be changed.
           </DrawerDescription>
         </DrawerHeader>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [-webkit-overflow-scrolling:touch]">
@@ -89,18 +90,18 @@ export function EmployeeFormDrawer({
             >
               <FormField
                 control={editForm.control}
-                name="employeeId"
+                name="agencyIdNo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Employee ID</FormLabel>
+                    <FormLabel>{labelForMasterField("agencyIdNo")}</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly className="bg-muted/50" />
+                      <Input {...field} readOnly className="bg-muted/50 font-mono" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <EmployeeFullFormFields variant="edit" control={editForm.control} form={editForm} />
+              <EmployeeMasterFormFields variant="edit" control={editForm.control} form={editForm} />
             </form>
           </Form>
         </div>

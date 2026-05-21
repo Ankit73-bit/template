@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { EmployeeExcelImportDialog } from "@/features/employees/employee-excel-import-dialog";
-import { EmployeeFullFormFields } from "@/features/employees/employee-form-sections";
+import { EmployeeMasterFormFields } from "@/features/employees/employee-master-form-fields";
 import {
   emptyPayrollEmployeeFormAddValues,
   payrollEmployeeFormAddSchema,
@@ -25,7 +25,7 @@ export function AddEmployeePage() {
     resolver: zodResolver(payrollEmployeeFormAddSchema),
     defaultValues: {
       ...emptyPayrollEmployeeFormAddValues,
-      joiningDate: new Date().toISOString().slice(0, 10),
+      dateOfJoining: new Date().toISOString().slice(0, 10),
       employmentStatus: "active",
     },
   });
@@ -35,7 +35,7 @@ export function AddEmployeePage() {
     try {
       const result = await createPayrollEmployee(values);
       if (!result.ok) {
-        form.setError("customEmployeeId", { type: "manual", message: result.error });
+        form.setError("agencyIdNo", { type: "manual", message: result.error });
         return;
       }
       router.push("/employees");
@@ -80,7 +80,7 @@ export function AddEmployeePage() {
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <EmployeeFullFormFields variant="add" control={form.control} form={form} />
+          <EmployeeMasterFormFields variant="add" control={form.control} form={form} />
           <div className="flex flex-wrap gap-2 pt-2">
             <Button type="submit" disabled={submitting}>
               {submitting ? "Saving…" : "Create employee"}

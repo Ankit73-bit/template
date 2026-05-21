@@ -24,7 +24,7 @@ export function EmployeeDeleteDialog({
   employee,
   onConfirm,
 }: EmployeeDeleteDialogProps) {
-  const name = employee?.fullName ?? "this employee";
+  const name = employee?.nameOfEmployee ?? "this employee";
 
   async function handleConfirm() {
     await onConfirm();

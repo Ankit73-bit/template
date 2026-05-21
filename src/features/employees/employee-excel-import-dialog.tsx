@@ -118,8 +118,9 @@ export function EmployeeExcelImportDialog({ open, onOpenChange, onImported }: Pr
         <DialogHeader>
           <DialogTitle>Import employees from Excel</DialogTitle>
           <DialogDescription>
-            Upload your master data sheet (e.g. KRC Cinevista Kanjur). Columns are matched by
-            header names such as NAME OF EMPLOYEE, AGENCY ID NO, SITE NAME, and DATE OF JOINING.
+            Matches your KRC file &quot;Master Data - Agency Manpower&quot; (34 columns with
+            exact header names). Download the template — it includes 2 demo rows from your sheet
+            layout.
             Rows with invalid data are listed below and are not imported.
           </DialogDescription>
         </DialogHeader>
@@ -144,7 +145,7 @@ export function EmployeeExcelImportDialog({ open, onOpenChange, onImported }: Pr
               onClick={downloadImportTemplate}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Download template
+              Download master template
             </Button>
           </div>
 
@@ -211,9 +212,8 @@ export function EmployeeExcelImportDialog({ open, onOpenChange, onImported }: Pr
               <ul className="max-h-28 overflow-y-auto rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
                 {parsedRows.slice(0, 5).map((r) => (
                   <li key={r.rowNumber}>
-                    {r.values.fullName}
-                    {r.values.customEmployeeId ? ` · ${r.values.customEmployeeId}` : ""} ·{" "}
-                    {r.values.branchOrSite}
+                    {r.values.nameOfEmployee}
+                    {r.values.agencyIdNo ? ` · ${r.values.agencyIdNo}` : ""} · {r.values.siteName}
                   </li>
                 ))}
                 {parsedRows.length > 5 ? (

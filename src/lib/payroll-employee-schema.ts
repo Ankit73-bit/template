@@ -53,53 +53,66 @@ export function annualSalaryFromMonthlyComponents(
   return monthlySalaryComponentSum(v) * 12;
 }
 
+/** Master sheet columns + internal payroll fields */
 const employeeDataSchema = z
   .object({
-    fullName: z.string().min(2, "Enter full name").max(120),
-    phone: z
+    sNo: z.string().max(20),
+    stateCity: z.string().max(120),
+    siteName: z.string().min(1, "SITE NAME is required").max(200),
+    employmentStatusYn: z.string().max(20),
+    agencyName: z.string().max(120),
+    agencyIdNo: z.string().max(40),
+    krcSiteBiometricIdNo: z.string().max(40),
+    dateOfJoining: z
       .string()
-      .min(7, "Enter a valid phone")
-      .max(24, "Phone is too long")
-      .regex(/^[\d\s+().-]+$/, "Invalid phone characters"),
-    email: z.string().email("Enter a valid email"),
-    address: z.string().min(1, "Address is required").max(500),
+      .min(1, "DATE OF JOINING is required")
+      .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date"),
+    lastWorkingDay: z.string().max(30),
+    designation: z.string().min(1, "DESIGNATION is required").max(80),
+    nameOfEmployee: z.string().min(2, "NAME OF EMPLOYEE is required").max(120),
+    empFatherSpouseName: z.string().max(120),
     dateOfBirth: z
       .string()
-      .min(1, "Date of birth is required")
+      .min(1, "DATE OF BIRTH is required")
       .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date"),
     gender: genderSchema,
-    photoDataUrl: z.string().max(2_500_000),
-    designation: z.string().min(1, "Designation is required").max(80),
-    department: z.string().min(1, "Department is required").max(120),
-    location: z.string().min(1, "Location is required").max(120),
-    joiningDate: z
+    bloodGroup: z.string().max(12),
+    employmentApplicationStatus: z.string().max(20),
+    educationCertificate: z.string().max(20),
+    aadharNumber: z
       .string()
-      .min(1, "Joining date is required")
-      .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date"),
-    employmentStatus: employmentStatusSchema,
-    shiftType: z.string().min(1, "Shift type is required").max(80),
-    branchOrSite: z.string().min(1, "Site or branch is required").max(120),
+      .max(24)
+      .refine((s) => s === "" || /^\d{12}$/.test(s.replace(/\s/g, "")), "AADHAR must be 12 digits"),
     panNumber: z
       .string()
       .max(20)
       .refine((s) => s === "" || /^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(s), "Invalid PAN format"),
-    aadhaarNumber: z
-      .string()
-      .max(20)
-      .refine((s) => s === "" || /^\d{12}$/.test(s.replace(/\s/g, "")), "Aadhaar must be 12 digits"),
-    uanNumber: z.string().max(20),
-    pfNumber: z.string().max(40),
-    esicNumber: z.string().max(40),
+    uanPfNo: z.string().max(30),
+    esicNo: z.string().max(30),
     bankName: z.string().max(120),
     bankAccountNumber: z.string().max(40),
-    bankIfsc: z
+    bankIfscNumber: z
       .string()
       .max(20)
       .refine(
         (s) => s === "" || /^[A-Z]{4}0[A-Z0-9]{6}$/i.test(s),
         "Invalid IFSC format",
       ),
-    bankBranchName: z.string().max(120),
+    pccApplicationNo: z.string().max(40),
+    pccApplicationDate: z.string().max(30),
+    pccNo: z.string().max(40),
+    pccIssueDate: z.string().max(30),
+    policeVerificationValidity: z.string().max(40),
+    currentAddress: z.string().min(1, "CURRENT ADDRESS is required").max(500),
+    permanentAddress: z.string().max(500),
+    phoneNumber: z
+      .string()
+      .min(7, "PHONE NUMBER is required")
+      .max(24)
+      .regex(/^[\d\s+().-]+$/, "Invalid phone"),
+    nextOfKinName: z.string().max(120),
+    nextOfKinContactNumber: z.string().max(24),
+    employmentStatus: employmentStatusSchema,
   })
   .merge(salaryComponentShape)
   .superRefine((data, ctx) => {
@@ -107,51 +120,57 @@ const employeeDataSchema = z
     if (sum <= 0) {
       ctx.addIssue({
         code: "custom",
-        message: "Monthly salary components must add up to more than zero.",
+        message: "Monthly salary must be greater than zero (set BASIC SALARY in payroll section).",
         path: ["salaryBasic"],
       });
     }
   });
 
-export const payrollEmployeeFormSchema = employeeDataSchema.extend({
-  employeeId: z.string().min(1, "Employee ID is required").max(40),
-});
+export const payrollEmployeeFormSchema = employeeDataSchema;
 
 export type PayrollEmployeeFormValues = z.infer<typeof payrollEmployeeFormSchema>;
 
-export const payrollEmployeeFormAddSchema = employeeDataSchema.extend({
-  customEmployeeId: z.string().max(40),
-});
+export const payrollEmployeeFormAddSchema = employeeDataSchema;
 
 export type PayrollEmployeeFormAddValues = z.infer<typeof payrollEmployeeFormAddSchema>;
 
-/** Empty add form; set `joiningDate` in the page to today. */
 export const emptyPayrollEmployeeFormAddValues: PayrollEmployeeFormAddValues = {
-  customEmployeeId: "",
-  fullName: "",
-  phone: "",
-  email: "",
-  address: "",
+  sNo: "",
+  stateCity: "",
+  siteName: "",
+  employmentStatusYn: "Y",
+  agencyName: "",
+  agencyIdNo: "",
+  krcSiteBiometricIdNo: "",
+  dateOfJoining: "",
+  lastWorkingDay: "",
+  designation: "",
+  nameOfEmployee: "",
+  empFatherSpouseName: "",
   dateOfBirth: "",
   gender: "prefer_not_to_say",
-  photoDataUrl: "",
-  designation: "",
-  department: "",
-  location: "",
-  joiningDate: "",
-  employmentStatus: "active",
-  shiftType: "",
-  branchOrSite: "",
+  bloodGroup: "",
+  employmentApplicationStatus: "",
+  educationCertificate: "",
+  aadharNumber: "",
   panNumber: "",
-  aadhaarNumber: "",
-  uanNumber: "",
-  pfNumber: "",
-  esicNumber: "",
+  uanPfNo: "",
+  esicNo: "",
   bankName: "",
   bankAccountNumber: "",
-  bankIfsc: "",
-  bankBranchName: "",
-  salaryBasic: 0,
+  bankIfscNumber: "",
+  pccApplicationNo: "",
+  pccApplicationDate: "",
+  pccNo: "",
+  pccIssueDate: "",
+  policeVerificationValidity: "",
+  currentAddress: "",
+  permanentAddress: "",
+  phoneNumber: "",
+  nextOfKinName: "",
+  nextOfKinContactNumber: "",
+  employmentStatus: "active",
+  salaryBasic: 1,
   salaryDa: 0,
   salaryHra: 0,
   salaryConveyance: 0,
@@ -162,15 +181,11 @@ export const emptyPayrollEmployeeFormAddValues: PayrollEmployeeFormAddValues = {
   salaryOtRate: 0,
 };
 
-export const emptyPayrollEmployeeFormValues: PayrollEmployeeFormValues = (() => {
-  const { customEmployeeId, ...rest } = emptyPayrollEmployeeFormAddValues;
-  void customEmployeeId;
-  return { ...rest, employeeId: "" };
-})();
+export const emptyPayrollEmployeeFormValues: PayrollEmployeeFormValues =
+  emptyPayrollEmployeeFormAddValues;
 
 export const payrollEmployeeSchema = employeeDataSchema.extend({
   id: z.string().min(1),
-  employeeId: z.string().min(1).max(40),
   salary: z.number().min(0),
   deletedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -189,76 +204,111 @@ export function payrollEmployeeToFormValues(employee: PayrollEmployee): PayrollE
   return rest;
 }
 
-/** Merged before Zod parse so older localStorage rows stay valid. */
 export const payrollEmployeeStorageDefaults: Record<string, unknown> = {
-  address: "",
-  dateOfBirth: "",
-  gender: "prefer_not_to_say",
-  photoDataUrl: "",
-  department: "",
-  location: "",
-  shiftType: "",
-  panNumber: "",
-  aadhaarNumber: "",
-  uanNumber: "",
-  pfNumber: "",
-  esicNumber: "",
-  bankName: "",
-  bankAccountNumber: "",
-  bankIfsc: "",
-  bankBranchName: "",
-  salaryBasic: 0,
-  salaryDa: 0,
-  salaryHra: 0,
-  salaryConveyance: 0,
-  salaryEducationAllowance: 0,
-  salaryLta: 0,
-  salaryWashingAllowance: 0,
-  salaryOtherAllowance: 0,
-  salaryOtRate: 0,
+  ...emptyPayrollEmployeeFormAddValues,
 };
 
-function coerceLegacyEmployeeFields(row: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...row };
-  const branch = String(next.branchOrSite ?? "").trim();
-  if (!String(next.address ?? "").trim()) {
-    next.address = "Not provided";
+function ynToEmploymentStatus(yn: string, lastWorkingDay: string): EmploymentStatusActive {
+  if (lastWorkingDay.trim()) {
+    const lwd = Date.parse(lastWorkingDay);
+    if (!Number.isNaN(lwd) && lwd < Date.now()) return "inactive";
   }
+  const s = yn.trim().toUpperCase();
+  if (s === "N" || s === "NO") return "inactive";
+  return "active";
+}
+
+function coerceLegacyEmployeeFields(row: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...row };
+
+  const mappings: Array<[string, string]> = [
+    ["fullName", "nameOfEmployee"],
+    ["employeeId", "agencyIdNo"],
+    ["customEmployeeId", "agencyIdNo"],
+    ["branchOrSite", "siteName"],
+    ["phone", "phoneNumber"],
+    ["department", "agencyName"],
+    ["location", "stateCity"],
+    ["joiningDate", "dateOfJoining"],
+    ["fatherOrSpouseName", "empFatherSpouseName"],
+    ["aadhaarNumber", "aadharNumber"],
+    ["uanNumber", "uanPfNo"],
+    ["pfNumber", "uanPfNo"],
+    ["esicNumber", "esicNo"],
+    ["bankIfsc", "bankIfscNumber"],
+    ["bankBranchName", ""],
+  ];
+
+  for (const [oldKey, newKey] of mappings) {
+    if (oldKey in next && newKey && !(newKey in next)) {
+      next[newKey] = next[oldKey];
+    }
+    if (oldKey in next && newKey) delete next[oldKey];
+  }
+
+  const legacyAddress = String(next.address ?? "").trim();
+  if (!String(next.currentAddress ?? "").trim()) {
+    next.currentAddress = legacyAddress || "Not provided";
+  }
+  if (!String(next.permanentAddress ?? "").trim()) {
+    next.permanentAddress =
+      legacyAddress || String(next.currentAddress ?? "") || "Not provided";
+  }
+  delete next.address;
+  delete next.email;
+  delete next.photoDataUrl;
+
+  if (!String(next.employmentStatusYn ?? "").trim()) {
+    const st = String(next.employmentStatus ?? "active");
+    next.employmentStatusYn = st === "inactive" ? "N" : "Y";
+  }
+
   if (!String(next.dateOfBirth ?? "").trim()) {
     next.dateOfBirth = "1990-01-01";
   }
-  if (!String(next.gender ?? "").trim()) {
+
+  if (!String(next.dateOfJoining ?? "").trim()) {
+    next.dateOfJoining = new Date().toISOString().slice(0, 10);
+  }
+
+  if (!String(next.siteName ?? "").trim()) {
+    next.siteName = "Head office";
+  }
+
+  const g = String(next.gender ?? "").trim();
+  if (!g) {
     next.gender = "prefer_not_to_say";
-  } else {
-    const g = String(next.gender).trim();
-    if (!genderSchema.safeParse(g).success) {
-      next.gender = "prefer_not_to_say";
-    }
+  } else if (!genderSchema.safeParse(g).success) {
+    const lower = g.toLowerCase();
+    if (lower.startsWith("m")) next.gender = "male";
+    else if (lower.startsWith("f")) next.gender = "female";
+    else next.gender = "prefer_not_to_say";
   }
-  if (!String(next.department ?? "").trim()) {
-    next.department = "Operations";
-  }
-  if (!String(next.location ?? "").trim()) {
-    next.location = branch || "Head office";
-  }
-  if (!String(next.shiftType ?? "").trim()) {
-    next.shiftType = "General";
-  }
-  if (!String(next.branchOrSite ?? "").trim()) {
-    next.branchOrSite = "Head office";
-  }
+
+  next.employmentStatus = ynToEmploymentStatus(
+    String(next.employmentStatusYn ?? "Y"),
+    String(next.lastWorkingDay ?? ""),
+  );
+
   const pan = String(next.panNumber ?? "").trim();
   if (pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(pan)) {
     next.panNumber = "";
   }
-  const aad = String(next.aadhaarNumber ?? "").replace(/\s/g, "");
+  const aad = String(next.aadharNumber ?? "").replace(/\s/g, "");
   if (aad && !/^\d{12}$/.test(aad)) {
-    next.aadhaarNumber = "";
+    next.aadharNumber = "";
   }
-  const ifsc = String(next.bankIfsc ?? "").trim();
+  const ifsc = String(next.bankIfscNumber ?? "").trim();
   if (ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(ifsc)) {
-    next.bankIfsc = "";
+    next.bankIfscNumber = "";
   }
+
+  if (!String(next.sNo ?? "").trim() && next.sNo !== 0) {
+    next.sNo = "";
+  } else if (typeof next.sNo === "number") {
+    next.sNo = String(next.sNo);
+  }
+
   return next;
 }
 
@@ -275,6 +325,9 @@ function migrateLegacySalaryRow(row: Record<string, unknown>): Record<string, un
   const salary = Number(row.salary);
   if (sum <= 0 && Number.isFinite(salary) && salary > 0) {
     return { ...row, salaryBasic: Math.round(salary / 12) };
+  }
+  if (sum <= 0) {
+    return { ...row, salaryBasic: 1 };
   }
   return row;
 }

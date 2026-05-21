@@ -3,56 +3,25 @@ import {
   payrollEmployeeFormAddSchema,
   type PayrollEmployeeFormAddValues,
 } from "@/lib/payroll-employee-schema";
+import {
+  buildExcelHeaderIndex,
+  MASTER_DATA_EMPLOYEE_FIELDS,
+  MASTER_DATA_TEMPLATE_DEMO_ROWS,
+  MASTER_DATA_TEMPLATE_HEADERS,
+  type MasterEmployeeFieldKey,
+} from "@/lib/payroll-employee-master-fields";
 
-export type ExcelImportFieldKey = keyof Omit<PayrollEmployeeFormAddValues, "customEmployeeId"> | "customEmployeeId";
+export {
+  MASTER_DATA_EMPLOYEE_FIELDS,
+  MASTER_DATA_TEMPLATE_HEADERS,
+  MASTER_DATA_TEMPLATE_DEMO_ROWS,
+  labelForMasterField,
+} from "@/lib/payroll-employee-master-fields";
 
-/** Normalized Excel header → form field */
-const HEADER_TO_FIELD: Record<string, ExcelImportFieldKey> = {
-  "S/NO": "customEmployeeId",
-  "SR NO": "customEmployeeId",
-  "STATE/CITY": "location",
-  "SITE NAME": "branchOrSite",
-  "EMPLOYMENT STATUS (ACTIVE - Y/N)": "employmentStatus",
-  "AGENCY NAME": "department",
-  "AGENCY ID NO": "customEmployeeId",
-  "KRC SITE BIOMETRIC ID NO.": "customEmployeeId",
-  "DATE OF JOINING": "joiningDate",
-  "DESIGNATION": "designation",
-  "NAME OF EMPLOYEE": "fullName",
-  "DATE OF BIRTH": "dateOfBirth",
-  GENDER: "gender",
-  "AADHAR NUMBER": "aadhaarNumber",
-  "AADHAAR NUMBER": "aadhaarNumber",
-  "PAN NUMBER": "panNumber",
-  "UAN / PF NO.": "uanNumber",
-  "UAN/PF NO.": "uanNumber",
-  "PF NUMBER": "pfNumber",
-  "ESIC NO.": "esicNumber",
-  "ESIC NUMBER": "esicNumber",
-  "BANK NAME": "bankName",
-  "BANK A/C NUMBER": "bankAccountNumber",
-  "BANK ACCOUNT NUMBER": "bankAccountNumber",
-  "BANK IFSC NUMBER": "bankIfsc",
-  "BANK IFSC": "bankIfsc",
-  "CURRENT ADDRESS": "address",
-  "PERMANENT ADDRESS": "address",
-  "PHONE NUMBER": "phone",
-  "EMAIL": "email",
-  "EMAIL ID": "email",
-  "SHIFT TYPE": "shiftType",
-  "DEPARTMENT": "department",
-  "LOCATION": "location",
-  "BASIC SALARY": "salaryBasic",
-  "BASIC": "salaryBasic",
-  DA: "salaryDa",
-  HRA: "salaryHra",
-  CONVEYANCE: "salaryConveyance",
-  "EDUCATION ALLOWANCE": "salaryEducationAllowance",
-  LTA: "salaryLta",
-  "WASHING ALLOWANCE": "salaryWashingAllowance",
-  "OTHER ALLOWANCE": "salaryOtherAllowance",
-  "OT RATE": "salaryOtRate",
-};
+export type ExcelImportFieldKey = MasterEmployeeFieldKey;
+
+export const EMPLOYEE_IMPORT_TEMPLATE_HEADERS = MASTER_DATA_TEMPLATE_HEADERS;
+export const EMPLOYEE_IMPORT_TEMPLATE_DEMO_ROWS = MASTER_DATA_TEMPLATE_DEMO_ROWS;
 
 export function normalizeExcelHeader(header: unknown): string {
   return String(header ?? "")
@@ -62,11 +31,38 @@ export function normalizeExcelHeader(header: unknown): string {
     .toUpperCase();
 }
 
+const MONTHS: Record<string, number> = {
+  JAN: 0,
+  FEB: 1,
+  MAR: 2,
+  APR: 3,
+  MAY: 4,
+  JUN: 5,
+  JUL: 6,
+  AUG: 7,
+  SEP: 8,
+  OCT: 9,
+  NOV: 10,
+  DEC: 11,
+};
+
 export function parseExcelDate(value: unknown): string {
   if (value == null || value === "") return "";
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return "";
+
+    const dmy = /^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/.exec(trimmed);
+    if (dmy) {
+      const day = Number.parseInt(dmy[1]!, 10);
+      const mon = MONTHS[dmy[2]!.toUpperCase()];
+      let year = Number.parseInt(dmy[3]!, 10);
+      if (mon === undefined || !Number.isFinite(day)) return "";
+      if (year < 100) year += year >= 50 ? 1900 : 2000;
+      const d = new Date(year, mon, day);
+      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    }
+
     const parsed = Date.parse(trimmed);
     if (!Number.isNaN(parsed)) {
       return new Date(parsed).toISOString().slice(0, 10);
@@ -85,22 +81,6 @@ export function parseExcelDate(value: unknown): string {
   return "";
 }
 
-function parseEmploymentStatus(value: unknown, lastWorkingDay: unknown): "active" | "inactive" {
-  if (lastWorkingDay != null && String(lastWorkingDay).trim() !== "") {
-    const lwd = parseExcelDate(lastWorkingDay);
-    if (lwd) {
-      const end = Date.parse(lwd);
-      if (!Number.isNaN(end) && end < Date.now()) return "inactive";
-    }
-  }
-  const s = String(value ?? "")
-    .trim()
-    .toUpperCase();
-  if (s === "N" || s === "NO" || s === "INACTIVE") return "inactive";
-  if (s === "Y" || s === "YES" || s === "ACTIVE") return "active";
-  return "active";
-}
-
 function parseGender(value: unknown): PayrollEmployeeFormAddValues["gender"] {
   const s = String(value ?? "")
     .trim()
@@ -111,21 +91,28 @@ function parseGender(value: unknown): PayrollEmployeeFormAddValues["gender"] {
   return "prefer_not_to_say";
 }
 
+function ynToStatus(yn: string, lastWorkingDay: string): PayrollEmployeeFormAddValues["employmentStatus"] {
+  if (lastWorkingDay.trim()) {
+    const lwd = Date.parse(lastWorkingDay);
+    if (!Number.isNaN(lwd) && lwd < Date.now()) return "inactive";
+  }
+  const s = yn.trim().toUpperCase();
+  if (s === "N" || s === "NO") return "inactive";
+  return "active";
+}
+
 function cellString(value: unknown): string {
   if (value == null) return "";
   return String(value).replace(/\s+/g, " ").trim();
 }
 
 function cellDigits(value: unknown): string {
-  const s = cellString(value);
-  if (!s) return "";
-  return s.replace(/\D/g, "");
+  return cellString(value).replace(/\D/g, "");
 }
 
-function cellNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
-  const n = Number.parseFloat(String(value ?? "").replace(/,/g, ""));
-  return Number.isFinite(n) ? Math.max(0, n) : 0;
+function getCell(row: unknown[], col: number | undefined): unknown {
+  if (col === undefined) return "";
+  return row[col] ?? "";
 }
 
 function pickSheet(workbook: XLSX.WorkBook): string {
@@ -137,7 +124,7 @@ function pickSheet(workbook: XLSX.WorkBook): string {
     const sh = workbook.Sheets[name];
     if (!sh) continue;
     const matrix = XLSX.utils.sheet_to_json<unknown[]>(sh, { header: 1, defval: "" });
-    for (const row of matrix.slice(0, 15)) {
+    for (const row of matrix.slice(0, 25)) {
       if (!Array.isArray(row)) continue;
       if (row.some((c) => normalizeExcelHeader(c) === "NAME OF EMPLOYEE")) {
         return name;
@@ -151,39 +138,9 @@ function findHeaderRowIndex(matrix: unknown[][]): number {
   for (let i = 0; i < Math.min(matrix.length, 30); i++) {
     const row = matrix[i];
     if (!Array.isArray(row)) continue;
-    const normalized = row.map(normalizeExcelHeader);
-    if (normalized.includes("NAME OF EMPLOYEE")) return i;
+    if (row.map(normalizeExcelHeader).includes("NAME OF EMPLOYEE")) return i;
   }
   return -1;
-}
-
-const CUSTOM_ID_HEADER_PRIORITY: Record<string, number> = {
-  "AGENCY ID NO": 10,
-  "KRC SITE BIOMETRIC ID NO.": 5,
-  "S/NO": 1,
-  "SR NO": 1,
-};
-
-function buildHeaderIndex(headers: unknown[]): Map<ExcelImportFieldKey, number> {
-  const map = new Map<ExcelImportFieldKey, number>();
-  headers.forEach((h, idx) => {
-    const norm = normalizeExcelHeader(h);
-    const key = HEADER_TO_FIELD[norm];
-    if (!key) return;
-    if (map.has(key)) {
-      const existingNorm = normalizeExcelHeader(headers[map.get(key)!]);
-      const existingPri = CUSTOM_ID_HEADER_PRIORITY[existingNorm] ?? 0;
-      const newPri = CUSTOM_ID_HEADER_PRIORITY[norm] ?? 0;
-      if (newPri <= existingPri) return;
-    }
-    map.set(key, idx);
-  });
-  return map;
-}
-
-function getCell(row: unknown[], col: number | undefined): unknown {
-  if (col === undefined) return "";
-  return row[col] ?? "";
 }
 
 export type ParsedExcelEmployeeRow = {
@@ -200,89 +157,89 @@ export type ExcelParseResult = {
 
 function rowToFormValues(
   row: unknown[],
-  headerIndex: Map<ExcelImportFieldKey, number>,
-  extra: { lastWorkingDayCol?: number },
+  headerIndex: Map<MasterEmployeeFieldKey, number>,
 ): PayrollEmployeeFormAddValues | null {
-  const fullName = cellString(getCell(row, headerIndex.get("fullName")));
-  if (!fullName || fullName.toUpperCase() === "NAME OF EMPLOYEE") return null;
+  const nameOfEmployee = cellString(getCell(row, headerIndex.get("nameOfEmployee")));
+  if (!nameOfEmployee || nameOfEmployee.toUpperCase() === "NAME OF EMPLOYEE") return null;
 
-  const agencyId = cellString(getCell(row, headerIndex.get("customEmployeeId")));
-  const phoneRaw = getCell(row, headerIndex.get("phone"));
-  const phoneDigits = cellDigits(phoneRaw);
-  const phone =
+  const phoneDigits = cellDigits(getCell(row, headerIndex.get("phoneNumber")));
+  const phoneNumber =
     phoneDigits.length >= 7
       ? phoneDigits.slice(0, 10)
-      : cellString(phoneRaw).replace(/[^\d\s+().-]/g, "").slice(0, 24);
+      : cellString(getCell(row, headerIndex.get("phoneNumber"))).slice(0, 24);
 
-  const currentAddr = cellString(getCell(row, headerIndex.get("address")));
-  const joining = parseExcelDate(getCell(row, headerIndex.get("joiningDate")));
-  const dob = parseExcelDate(getCell(row, headerIndex.get("dateOfBirth")));
-  const lastWorking =
-    extra.lastWorkingDayCol !== undefined ? getCell(row, extra.lastWorkingDayCol) : "";
+  let currentAddress = cellString(getCell(row, headerIndex.get("currentAddress")));
+  let permanentAddress = cellString(getCell(row, headerIndex.get("permanentAddress")));
+  if (/^same$/i.test(permanentAddress)) {
+    permanentAddress = currentAddress;
+  }
+  if (!currentAddress && permanentAddress) currentAddress = permanentAddress;
+  if (!permanentAddress && currentAddress) permanentAddress = currentAddress;
 
-  const emailRaw = cellString(getCell(row, headerIndex.get("email")));
-  const email =
-    emailRaw && emailRaw.includes("@")
-      ? emailRaw.toLowerCase()
-      : `emp-${(agencyId || phoneDigits || fullName.replace(/\W+/g, "").slice(0, 12) || "import").toLowerCase()}@import.local`;
-
-  const monthlySum =
-    cellNumber(getCell(row, headerIndex.get("salaryBasic"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryDa"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryHra"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryConveyance"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryEducationAllowance"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryLta"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryWashingAllowance"))) +
-    cellNumber(getCell(row, headerIndex.get("salaryOtherAllowance")));
-
-  const salaryBasic =
-    monthlySum > 0 ? cellNumber(getCell(row, headerIndex.get("salaryBasic"))) : 1;
+  const dateOfJoining = parseExcelDate(getCell(row, headerIndex.get("dateOfJoining")));
+  const dateOfBirth = parseExcelDate(getCell(row, headerIndex.get("dateOfBirth")));
+  const lastWorkingDay = parseExcelDate(getCell(row, headerIndex.get("lastWorkingDay")));
+  const employmentStatusYn = cellString(getCell(row, headerIndex.get("employmentStatusYn"))) || "Y";
 
   let panNumber = cellString(getCell(row, headerIndex.get("panNumber"))).toUpperCase();
-  let aadhaarNumber = cellDigits(getCell(row, headerIndex.get("aadhaarNumber")));
-  let bankIfsc = cellString(getCell(row, headerIndex.get("bankIfsc"))).toUpperCase();
+  let aadharNumber = cellDigits(getCell(row, headerIndex.get("aadharNumber")));
+  let bankIfscNumber = cellString(getCell(row, headerIndex.get("bankIfscNumber"))).toUpperCase();
   if (panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(panNumber)) panNumber = "";
-  if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) aadhaarNumber = "";
-  if (bankIfsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(bankIfsc)) bankIfsc = "";
+  if (aadharNumber && !/^\d{12}$/.test(aadharNumber)) aadharNumber = "";
+  if (bankIfscNumber && !/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(bankIfscNumber)) bankIfscNumber = "";
+
+  const sNoRaw = getCell(row, headerIndex.get("sNo"));
+  const sNo = cellString(sNoRaw) || (typeof sNoRaw === "number" ? String(sNoRaw) : "");
 
   const values: PayrollEmployeeFormAddValues = {
-    customEmployeeId: agencyId ? `AG-${agencyId}` : "",
-    fullName,
-    phone: phone || "0000000000",
-    email,
-    address: currentAddr || "Not provided",
-    dateOfBirth: dob || "1990-01-01",
-    gender: parseGender(getCell(row, headerIndex.get("gender"))),
-    photoDataUrl: "",
+    sNo,
+    stateCity: cellString(getCell(row, headerIndex.get("stateCity"))),
+    siteName: cellString(getCell(row, headerIndex.get("siteName"))) || "Head office",
+    employmentStatusYn,
+    agencyName: cellString(getCell(row, headerIndex.get("agencyName"))),
+    agencyIdNo: cellString(getCell(row, headerIndex.get("agencyIdNo"))),
+    krcSiteBiometricIdNo: cellString(getCell(row, headerIndex.get("krcSiteBiometricIdNo"))),
+    dateOfJoining: dateOfJoining || new Date().toISOString().slice(0, 10),
+    lastWorkingDay,
     designation: cellString(getCell(row, headerIndex.get("designation"))) || "Staff",
-    department: cellString(getCell(row, headerIndex.get("department"))) || "Operations",
-    location: cellString(getCell(row, headerIndex.get("location"))) || "Mumbai",
-    joiningDate: joining || new Date().toISOString().slice(0, 10),
-    employmentStatus: parseEmploymentStatus(
-      getCell(row, headerIndex.get("employmentStatus")),
-      lastWorking,
+    nameOfEmployee,
+    empFatherSpouseName: cellString(getCell(row, headerIndex.get("empFatherSpouseName"))),
+    dateOfBirth: dateOfBirth || "1990-01-01",
+    gender: parseGender(getCell(row, headerIndex.get("gender"))),
+    bloodGroup: cellString(getCell(row, headerIndex.get("bloodGroup"))),
+    employmentApplicationStatus: cellString(
+      getCell(row, headerIndex.get("employmentApplicationStatus")),
     ),
-    shiftType: cellString(getCell(row, headerIndex.get("shiftType"))) || "General",
-    branchOrSite: cellString(getCell(row, headerIndex.get("branchOrSite"))) || "Head office",
+    educationCertificate: cellString(getCell(row, headerIndex.get("educationCertificate"))),
+    aadharNumber,
     panNumber,
-    aadhaarNumber,
-    uanNumber: cellString(getCell(row, headerIndex.get("uanNumber"))),
-    pfNumber: cellString(getCell(row, headerIndex.get("pfNumber"))),
-    esicNumber: cellString(getCell(row, headerIndex.get("esicNumber"))),
+    uanPfNo: cellString(getCell(row, headerIndex.get("uanPfNo"))),
+    esicNo: cellString(getCell(row, headerIndex.get("esicNo"))),
     bankName: cellString(getCell(row, headerIndex.get("bankName"))),
     bankAccountNumber: cellString(getCell(row, headerIndex.get("bankAccountNumber"))),
-    bankIfsc,
-    bankBranchName: "",
-    salaryBasic,
-    salaryDa: cellNumber(getCell(row, headerIndex.get("salaryDa"))),
-    salaryHra: cellNumber(getCell(row, headerIndex.get("salaryHra"))),
-    salaryConveyance: cellNumber(getCell(row, headerIndex.get("salaryConveyance"))),
-    salaryEducationAllowance: cellNumber(getCell(row, headerIndex.get("salaryEducationAllowance"))),
-    salaryLta: cellNumber(getCell(row, headerIndex.get("salaryLta"))),
-    salaryWashingAllowance: cellNumber(getCell(row, headerIndex.get("salaryWashingAllowance"))),
-    salaryOtherAllowance: cellNumber(getCell(row, headerIndex.get("salaryOtherAllowance"))),
-    salaryOtRate: cellNumber(getCell(row, headerIndex.get("salaryOtRate"))),
+    bankIfscNumber,
+    pccApplicationNo: cellString(getCell(row, headerIndex.get("pccApplicationNo"))),
+    pccApplicationDate: parseExcelDate(getCell(row, headerIndex.get("pccApplicationDate"))),
+    pccNo: cellString(getCell(row, headerIndex.get("pccNo"))),
+    pccIssueDate: parseExcelDate(getCell(row, headerIndex.get("pccIssueDate"))),
+    policeVerificationValidity: cellString(
+      getCell(row, headerIndex.get("policeVerificationValidity")),
+    ),
+    currentAddress: currentAddress || "Not provided",
+    permanentAddress,
+    phoneNumber: phoneNumber || "0000000000",
+    nextOfKinName: cellString(getCell(row, headerIndex.get("nextOfKinName"))),
+    nextOfKinContactNumber: cellDigits(getCell(row, headerIndex.get("nextOfKinContactNumber"))),
+    employmentStatus: ynToStatus(employmentStatusYn, lastWorkingDay),
+    salaryBasic: 1,
+    salaryDa: 0,
+    salaryHra: 0,
+    salaryConveyance: 0,
+    salaryEducationAllowance: 0,
+    salaryLta: 0,
+    salaryWashingAllowance: 0,
+    salaryOtherAllowance: 0,
+    salaryOtRate: 0,
   };
 
   return values;
@@ -303,10 +260,7 @@ export function parsePayrollEmployeeWorkbook(buffer: ArrayBuffer): ExcelParseRes
   }
 
   const headers = matrix[headerRowIdx] ?? [];
-  const headerIndex = buildHeaderIndex(headers);
-  const lastWorkingDayCol = headers.findIndex(
-    (h) => normalizeExcelHeader(h) === "LAST WORKING DAY",
-  );
+  const headerIndex = buildExcelHeaderIndex(headers);
 
   const rows: ParsedExcelEmployeeRow[] = [];
   let skippedEmpty = 0;
@@ -317,9 +271,7 @@ export function parsePayrollEmployeeWorkbook(buffer: ArrayBuffer): ExcelParseRes
       skippedEmpty++;
       continue;
     }
-    const values = rowToFormValues(row, headerIndex, {
-      lastWorkingDayCol: lastWorkingDayCol >= 0 ? lastWorkingDayCol : undefined,
-    });
+    const values = rowToFormValues(row, headerIndex);
     if (!values) {
       skippedEmpty++;
       continue;
@@ -341,40 +293,24 @@ export function validateImportRows(rows: ParsedExcelEmployeeRow[]): ExcelRowVali
   return rows.map(({ rowNumber, values }) => {
     const parsed = payrollEmployeeFormAddSchema.safeParse(values);
     if (parsed.success) {
-      return { rowNumber, fullName: values.fullName, ok: true };
+      return { rowNumber, fullName: values.nameOfEmployee, ok: true };
     }
     const first = parsed.error.issues[0];
     const msg = first ? `${first.path.join(".")}: ${first.message}` : "Invalid row";
-    return { rowNumber, fullName: values.fullName, ok: false, error: msg };
+    return { rowNumber, fullName: values.nameOfEmployee, ok: false, error: msg };
   });
 }
 
-export const EXCEL_IMPORT_TEMPLATE_HEADERS = [
-  "NAME OF EMPLOYEE",
-  "AGENCY ID NO",
-  "SITE NAME",
-  "STATE/CITY",
-  "DESIGNATION",
-  "DATE OF JOINING",
-  "DATE OF BIRTH",
-  "GENDER",
-  "EMPLOYMENT STATUS (ACTIVE - Y/N)",
-  "PHONE NUMBER",
-  "CURRENT ADDRESS",
-  "PAN NUMBER",
-  "AADHAR NUMBER",
-  "UAN / PF NO.",
-  "ESIC NO.",
-  "BANK NAME",
-  "BANK A/C NUMBER",
-  "BANK IFSC NUMBER",
-  "AGENCY NAME",
-  "BASIC SALARY",
-] as const;
-
 export function downloadImportTemplate(): void {
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([Array.from(EXCEL_IMPORT_TEMPLATE_HEADERS)]);
-  XLSX.utils.book_append_sheet(wb, ws, "Employees");
-  XLSX.writeFile(wb, "employee-import-template.xlsx");
+  const sheetData: (string | number)[][] = [
+    [...MASTER_DATA_TEMPLATE_HEADERS],
+    ...MASTER_DATA_TEMPLATE_DEMO_ROWS,
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  ws["!cols"] = MASTER_DATA_EMPLOYEE_FIELDS.map((f) => ({
+    wch: Math.min(52, Math.max(10, Math.ceil((f.tableMinWidth ?? 100) / 7))),
+  }));
+  XLSX.utils.book_append_sheet(wb, ws, "Master Data - Agency Manpower");
+  XLSX.writeFile(wb, "employee-master-data-template.xlsx");
 }

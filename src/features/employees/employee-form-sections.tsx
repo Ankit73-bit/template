@@ -17,8 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type {
   Gender,
   PayrollEmployeeFormAddValues,
@@ -33,15 +31,6 @@ const genderLabels: Record<Gender, string> = {
   other: "Other",
   prefer_not_to_say: "Prefer not to say",
 };
-
-const PHOTO_MAX_BYTES = 1_500_000;
-
-function initialsFromName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0]!}${parts[parts.length - 1]![0]!}`.toUpperCase();
-}
 
 function digitAmountInputProps(
   value: number,
@@ -76,10 +65,7 @@ type EmployeeFullFormFieldsProps =
 
 export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullFormFieldsProps) {
   const rhfControl = control as unknown as Control<FieldValues>;
-  const watchedName =
-    variant === "add"
-      ? (form as UseFormReturn<PayrollEmployeeFormAddValues>).watch("fullName")
-      : (form as UseFormReturn<PayrollEmployeeFormValues>).watch("fullName");
+  void form;
 
   return (
     <div className="space-y-8">
@@ -98,7 +84,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
                   <FormLabel>Employee ID</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Leave blank to assign automatically (e.g. EMP-1007)"
+                      placeholder="From sheet: Agency ID no. Leave blank for auto (e.g. EMP-1007)"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -113,7 +99,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
             name="fullName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full name</FormLabel>
+                <FormLabel>Name of employee</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g. Priya Sharma" {...field} />
                 </FormControl>
@@ -121,42 +107,45 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
               </FormItem>
             )}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              control={rhfControl}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="+91 …" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={rhfControl}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="name@company.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
           <FormField
             control={rhfControl}
-            name="address"
+            name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Address</FormLabel>
+                <FormLabel>Phone number</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="Residential address" rows={3} className="resize-y" {...field} />
+                  <Input placeholder="+91 …" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={rhfControl}
+            name="currentAddress"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Current address</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Current residential address" rows={3} className="resize-y" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={rhfControl}
+            name="permanentAddress"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Permanent address</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Permanent address (or SAME as current)"
+                    rows={3}
+                    className="resize-y"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -203,68 +192,247 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
               )}
             />
           </div>
-          <FormField
-            control={rhfControl}
-            name="photoDataUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Photo</FormLabel>
-                <div className="flex flex-wrap items-end gap-4">
-                  <Avatar className="h-20 w-20 border border-border">
-                    {field.value ? (
-                      <AvatarImage src={field.value} alt="" className="object-cover" />
-                    ) : null}
-                    <AvatarFallback className="text-sm font-semibold">
-                      {initialsFromName(typeof watchedName === "string" ? watchedName : "")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="cursor-pointer"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) {
-                            field.onChange("");
-                            return;
-                          }
-                          if (file.size > PHOTO_MAX_BYTES) {
-                            form.setError("photoDataUrl", {
-                              type: "validate",
-                              message: "Image must be 1.5 MB or smaller.",
-                            });
-                            e.target.value = "";
-                            return;
-                          }
-                          form.clearErrors("photoDataUrl");
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            field.onChange(typeof reader.result === "string" ? reader.result : "");
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </FormControl>
-                    {field.value ? (
-                      <Button type="button" variant="outline" size="sm" onClick={() => field.onChange("")}>
-                        Remove photo
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">2. Employment information</CardTitle>
-          <CardDescription>Role, location, and work arrangement.</CardDescription>
+          <CardTitle className="text-lg">2. Master sheet details</CardTitle>
+          <CardDescription>
+            Fields from the employee import template (physical, education, verification).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormField
+            control={rhfControl}
+            name="fatherOrSpouseName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Father&apos;s / husband name</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FormField
+              control={rhfControl}
+              name="ageYears"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Age (yrs)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="experienceYears"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Experience (yrs)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="employeeCategory"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CAT (SK/USK/SSK)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="SK" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="bloodGroup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Blood group</FormLabel>
+                  <FormControl>
+                    <Input placeholder="B+" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FormField
+              control={rhfControl}
+              name="heightCm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Height (cm)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="weightKg"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weight (kg)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="chestNormalInches"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chest normal (in)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="chestExpandInches"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Chest expand (in)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={field.value === 0 ? "" : String(field.value)}
+                      onChange={(e) => {
+                        const d = e.target.value.replace(/\D/g, "");
+                        field.onChange(d === "" ? 0 : Number.parseInt(d, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={rhfControl}
+            name="educationQualification"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Education / qualification</FormLabel>
+                <FormControl>
+                  <Input placeholder="Graduate" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FormField
+              control={rhfControl}
+              name="voterCardNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Voter card no</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="drivingLicenceNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Driving licence</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={rhfControl}
+              name="policeVerification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Police verification</FormLabel>
+                  <FormControl>
+                    <Input placeholder="YES / NO" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">3. Employment information</CardTitle>
+          <CardDescription>Role, site, and work arrangement.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -273,9 +441,9 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
               name="designation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Designation</FormLabel>
+                  <FormLabel>Employee designation</FormLabel>
                   <FormControl>
-                    <Input placeholder="Role title" {...field} />
+                    <Input placeholder="e.g. ASO, Security Officer" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -366,7 +534,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
             name="branchOrSite"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Site / branch</FormLabel>
+                <FormLabel>Site name</FormLabel>
                 <FormControl>
                   <Input placeholder="Site or branch name" {...field} />
                 </FormControl>
@@ -379,7 +547,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">3. Government details</CardTitle>
+          <CardTitle className="text-lg">4. Government details</CardTitle>
           <CardDescription>Statutory identifiers (optional unless you enforce them).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -468,7 +636,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">4. Banking information</CardTitle>
+          <CardTitle className="text-lg">5. Banking information</CardTitle>
           <CardDescription>Salary account details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -540,7 +708,7 @@ export function EmployeeFullFormFields({ variant, control, form }: EmployeeFullF
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">5. Salary structure</CardTitle>
+          <CardTitle className="text-lg">6. Salary structure</CardTitle>
           <CardDescription>
             Monthly amounts in INR (except OT rate). Annual salary in the directory is twelve times the sum of the
             allowance fields below (Basic through Other allowance).

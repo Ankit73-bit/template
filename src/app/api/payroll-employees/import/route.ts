@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     for (const item of incoming) {
       const rowNumber = typeof item.rowNumber === "number" ? item.rowNumber : 0;
       const values = item.values;
-      const fullName = values?.fullName?.trim() || "Unknown";
+      const fullName = values?.nameOfEmployee?.trim() || "Unknown";
 
       if (!values) {
         results.push({ rowNumber, fullName, status: "failed", error: "Missing row data." });
@@ -67,15 +67,15 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const wantId = parsed.data.customEmployeeId.trim().toLowerCase();
+      const wantId = parsed.data.agencyIdNo.trim().toLowerCase();
       if (skipDuplicates && wantId) {
-        const exists = list.some((e) => e.employeeId.trim().toLowerCase() === wantId);
+        const exists = list.some((e) => e.agencyIdNo.trim().toLowerCase() === wantId);
         if (exists) {
           results.push({
             rowNumber,
             fullName,
             status: "skipped",
-            error: `Employee ID ${parsed.data.customEmployeeId} already exists.`,
+            error: `AGENCY ID NO ${parsed.data.agencyIdNo} already exists.`,
           });
           continue;
         }
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         rowNumber,
         fullName,
         status: "imported",
-        employeeId: createdResult.created.employeeId,
+        employeeId: createdResult.created.agencyIdNo,
       });
     }
 
