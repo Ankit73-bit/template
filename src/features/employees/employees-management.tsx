@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Table } from "@tanstack/react-table";
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { FileSpreadsheet, Plus, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -15,6 +15,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { EmployeeFormDrawer } from "@/features/employees/employee-form-drawer";
 import { EmployeeDeleteDialog } from "@/features/employees/employee-delete-dialog";
+import { EmployeeExcelImportDialog } from "@/features/employees/employee-excel-import-dialog";
 import { createPayrollEmployeeColumns } from "@/features/employees/payroll-employee-table-columns";
 import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
 import type { PayrollEmployeeFormValues } from "@/lib/payroll-employee-schema";
@@ -86,6 +87,7 @@ export function EmployeesManagement() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PayrollEmployee | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -153,8 +155,7 @@ export function EmployeesManagement() {
       if (!id) return;
       const result = await updatePayrollEmployee(id, values);
       if (!result.ok) {
-        window.alert(result.error);
-        return;
+        throw new Error(result.error);
       }
       await refresh();
     },
@@ -187,16 +188,28 @@ export function EmployeesManagement() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Manage roster, compensation, and employment status. Records are stored in MongoDB
-            (collection <code className="rounded bg-muted px-1 text-xs">payroll_employees</code>).
+            Import your master Excel sheet in bulk, add one employee at a time, or click{" "}
+            <strong className="font-medium text-foreground">Edit</strong> on any row to update
+            details. All records are saved to MongoDB.
           </p>
         </div>
-        <Button className="shrink-0 gap-2" asChild>
-          <Link href="/employees/add">
-            <Plus className="h-4 w-4" />
-            Add employee
-          </Link>
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => setImportOpen(true)}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Import Excel
+          </Button>
+          <Button className="gap-2" asChild>
+            <Link href="/employees/add">
+              <Plus className="h-4 w-4" />
+              Add employee
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {loadError ? (
@@ -239,11 +252,40 @@ export function EmployeesManagement() {
               emptyState={
                 <EmptyState
                   icon={Users}
-                  title={loadError ? "Could not load employees" : "No employees match filters"}
+                  title={
+                    loadError
+                      ? "Could not load employees"
+                      : employees.length === 0
+                        ? "No employees yet"
+                        : "No employees match filters"
+                  }
                   description={
                     loadError
-                      ? "Fix the connection issue above, then use Refresh."
-                      : "Clear search and filters, or include archived records."
+                      ? "Fix MongoDB connection (.env.local MONGODB_URI), then Refresh."
+                      : employees.length === 0
+                        ? "Import your KRC master sheet or add employees one at a time."
+                        : "Clear search and filters, or include archived records."
+                  }
+                  action={
+                    !loadError && employees.length === 0 ? (
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="default"
+                          className="gap-2"
+                          onClick={() => setImportOpen(true)}
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Import Excel
+                        </Button>
+                        <Button variant="outline" className="gap-2" asChild>
+                          <Link href="/employees/add">
+                            <Plus className="h-4 w-4" />
+                            Add one employee
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : undefined
                   }
                 />
               }
@@ -270,6 +312,12 @@ export function EmployeesManagement() {
         }}
         employee={deleteTarget}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <EmployeeExcelImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={refresh}
       />
     </div>
   );

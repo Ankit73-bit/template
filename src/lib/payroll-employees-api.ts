@@ -77,6 +77,41 @@ export async function archivePayrollEmployee(
   return { ok: true };
 }
 
+export type PayrollEmployeeImportSummary = {
+  imported: number;
+  skipped: number;
+  failed: number;
+  results: Array<{
+    rowNumber: number;
+    fullName: string;
+    status: "imported" | "skipped" | "failed";
+    employeeId?: string;
+    error?: string;
+  }>;
+};
+
+export async function importPayrollEmployees(
+  rows: Array<{ rowNumber: number; values: PayrollEmployeeFormAddValues }>,
+  options?: { skipDuplicates?: boolean },
+): Promise<{ ok: true; summary: PayrollEmployeeImportSummary } | { ok: false; error: string }> {
+  const res = await fetch(`${BASE}/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      rows,
+      skipDuplicates: options?.skipDuplicates ?? true,
+    }),
+  });
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    return { ok: false, error: errorMessageFromResponse(data, "Failed to import employees.") };
+  }
+  if (!data || typeof data !== "object" || !("imported" in data)) {
+    return { ok: false, error: "Invalid response from server." };
+  }
+  return { ok: true, summary: data as PayrollEmployeeImportSummary };
+}
+
 export async function restorePayrollEmployee(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {

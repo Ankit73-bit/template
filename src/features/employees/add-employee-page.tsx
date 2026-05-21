@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { EmployeeExcelImportDialog } from "@/features/employees/employee-excel-import-dialog";
 import { EmployeeFullFormFields } from "@/features/employees/employee-form-sections";
 import {
   emptyPayrollEmployeeFormAddValues,
@@ -19,6 +20,7 @@ import { createPayrollEmployee } from "@/lib/payroll-employees-api";
 export function AddEmployeePage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const form = useForm<PayrollEmployeeFormAddValues>({
     resolver: zodResolver(payrollEmployeeFormAddSchema),
     defaultValues: {
@@ -51,13 +53,29 @@ export function AddEmployeePage() {
             Back to directory
           </Link>
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit gap-2"
+          onClick={() => setImportOpen(true)}
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Import from Excel
+        </Button>
       </div>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Add employee</h1>
         <p className="mt-1 text-sm text-muted-foreground md:text-base">
-          Complete each section below. A unique employee ID is assigned when you save unless you
-          provide one. Annual salary in the directory is calculated from the monthly salary structure
-          (twelve times the sum of Basic through Other allowance). Records are saved to MongoDB.
+          Add a single employee using the form below, or use{" "}
+          <button
+            type="button"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+            onClick={() => setImportOpen(true)}
+          >
+            Import from Excel
+          </button>{" "}
+          to load many rows from your master sheet (e.g. KRC Cinevista Kanjur). After saving, edit
+          anyone from the directory with the Edit button.
         </p>
       </div>
       <Form {...form}>
@@ -73,6 +91,12 @@ export function AddEmployeePage() {
           </div>
         </form>
       </Form>
+
+      <EmployeeExcelImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => router.push("/employees")}
+      />
     </div>
   );
 }

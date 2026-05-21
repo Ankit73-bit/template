@@ -159,24 +159,35 @@ export function createPayrollEmployeeColumns(handlers: {
     {
       id: "actions",
       enableHiding: false,
-      header: () => <span className="sr-only">Actions</span>,
+      header: "Actions",
       cell: ({ row }) => {
         const e = row.original;
         const archived = Boolean(e.deletedAt);
         return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 px-2.5"
+              onClick={() => handlers.onEdit(e)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">More actions</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>More</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handlers.onEdit(e)}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                Edit employee
               </DropdownMenuItem>
               {!archived && (
                 <DropdownMenuItem
@@ -195,6 +206,7 @@ export function createPayrollEmployeeColumns(handlers: {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         );
       },
     },
