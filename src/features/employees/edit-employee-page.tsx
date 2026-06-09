@@ -155,7 +155,7 @@ export function EditEmployeePage() {
           )}
 
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || !form.formState.isDirty}>
               {submitting ? "Saving…" : "Save changes"}
             </Button>
             <Button type="button" variant="outline" asChild>

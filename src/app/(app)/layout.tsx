@@ -1,3 +1,4 @@
+import { Toaster } from "sonner";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
@@ -13,6 +14,7 @@ export default function AppShellLayout({
         <AppHeader />
         <main className="flex-1 overflow-auto p-4 md:p-8">{children}</main>
       </div>
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { FileSpreadsheet, Upload } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -101,12 +102,13 @@ export function EmployeeExcelImportDialog({ open, onOpenChange, onImported }: Pr
         return;
       }
       const { imported, skipped, failed } = result.summary;
-      setSummary(
-        `Imported ${imported} employee${imported === 1 ? "" : "s"}.` +
-          (skipped ? ` Skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}.` : "") +
-          (failed ? ` ${failed} failed.` : ""),
-      );
       await onImported();
+      handleOpenChange(false);
+      toast.success(
+        `${imported} employee${imported === 1 ? "" : "s"} imported successfully` +
+          (skipped ? `. ${skipped} duplicate${skipped === 1 ? "" : "s"} skipped` : "") +
+          (failed ? `. ${failed} failed` : ""),
+      );
     } finally {
       setImporting(false);
     }

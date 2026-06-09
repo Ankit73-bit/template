@@ -139,9 +139,9 @@ export function EmployeesManagement() {
 
   const tableData = useMemo(
     () =>
-      employees.filter(
-        (e) => includeArchived || e.deletedAt === null,
-      ),
+      employees
+        .filter((e) => includeArchived || e.deletedAt === null)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [employees, includeArchived],
   );
 
@@ -192,15 +192,10 @@ export function EmployeesManagement() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto flex h-full max-w-7xl flex-col gap-8">
+      <div className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Import your master Excel sheet in bulk, add one employee at a time, or click{" "}
-            <strong className="font-medium text-foreground">Edit</strong> on any row to update
-            details. All records are saved to MongoDB.
-          </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Button
@@ -227,12 +222,12 @@ export function EmployeesManagement() {
         </p>
       ) : null}
 
-      <Card>
-        <CardHeader>
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <CardHeader className="shrink-0">
           <CardTitle>Workforce directory</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="styled-scrollbar overflow-x-auto rounded-lg border border-sky-200/70 bg-card shadow-sm [-webkit-overflow-scrolling:touch] dark:border-sky-900/40 [&_table]:min-w-max [&_thead]:bg-sky-100 [&_th]:whitespace-nowrap [&_th]:border-sky-200/60 [&_th]:px-2 [&_th]:py-2.5 [&_td]:px-2 [&_td]:py-2 dark:[&_thead]:bg-sky-950 dark:[&_th]:border-sky-800/60">
+        <CardContent className="flex min-h-0 flex-1 flex-col space-y-4">
+          <div className="styled-scrollbar min-h-0 flex-1 overflow-auto rounded-lg border border-sky-200/70 bg-card shadow-sm [-webkit-overflow-scrolling:touch] dark:border-sky-900/40 [&_table]:min-w-max [&_thead]:bg-sky-100 [&_th]:whitespace-nowrap [&_th]:border-sky-200/60 [&_th]:px-2 [&_th]:py-2.5 [&_td]:px-2 [&_td]:py-2 dark:[&_thead]:bg-sky-950 dark:[&_th]:border-sky-800/60">
             <DataTable
               columns={columns}
               data={tableData}
