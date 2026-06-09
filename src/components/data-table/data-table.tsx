@@ -9,6 +9,7 @@ import type {
   Table as TanstackTable,
   VisibilityState,
 } from "@tanstack/react-table";
+export type { VisibilityState } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
@@ -43,6 +44,7 @@ type DataTableProps<TData, TValue> = {
   toolbarExtras?: (table: TanstackTable<TData>) => ReactNode;
   emptyState?: ReactNode;
   className?: string;
+  initialColumnVisibility?: VisibilityState;
   pageSize?: number;
   pageSizeOptions?: number[];
   showPaginationInfo?: boolean;
@@ -60,13 +62,16 @@ export function DataTable<TData, TValue>({
   toolbarExtras,
   emptyState,
   className,
+  initialColumnVisibility,
   pageSize = 8,
   pageSizeOptions,
   showPaginationInfo = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    initialColumnVisibility ?? {},
+  );
   const [globalFilter, setGlobalFilter] = useState("");
 
   // TanStack Table returns unstable function references; React Compiler skips memoization here.
@@ -123,19 +128,34 @@ export function DataTable<TData, TValue>({
       />
       <div className="rounded-md border border-border bg-card">
         <Table>
-          <TableHeader>
+          <TableHeader className="[&_tr]:bg-inherit">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const sticky = (
+                    header.column.columnDef.meta as
+                      | { sticky?: "left" | "right" }
+                      | undefined
+                  )?.sticky;
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        sticky &&
+                          "sticky z-20 bg-inherit after:pointer-events-none after:absolute after:inset-y-0 after:w-4",
+                        sticky === "left" && "left-0 after:-right-4 after:shadow-[4px_0_6px_-4px_rgba(0,0,0,0.12)]",
+                        sticky === "right" && "right-0 after:-left-4 after:shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.12)]",
+                      )}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -146,14 +166,29 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const sticky = (
+                      cell.column.columnDef.meta as
+                        | { sticky?: "left" | "right" }
+                        | undefined
+                    )?.sticky;
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          sticky &&
+                            "sticky z-10 bg-[var(--color-card)] after:pointer-events-none after:absolute after:inset-y-0 after:w-4",
+                          sticky === "left" && "left-0 after:-right-4 after:shadow-[4px_0_6px_-4px_rgba(0,0,0,0.12)]",
+                          sticky === "right" && "right-0 after:-left-4 after:shadow-[-4px_0_6px_-4px_rgba(0,0,0,0.12)]",
+                        )}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (

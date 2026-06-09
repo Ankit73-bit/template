@@ -12,6 +12,24 @@ import { PAYROLL_EMPLOYEES_COLLECTION } from "@/lib/payroll-employees-mongo-cons
 
 type RouteCtx = { params: Promise<{ id: string }> };
 
+export async function GET(_request: Request, ctx: RouteCtx) {
+  try {
+    const { id } = await ctx.params;
+    const list = await loadAllPayrollEmployeesFromDb();
+    const employee = list.find((e) => e.id === id);
+    if (!employee) {
+      return NextResponse.json({ error: "Employee not found." }, { status: 404 });
+    }
+    return NextResponse.json(employee);
+  } catch (error) {
+    if (isMongoConnectionError(error)) {
+      return NextResponse.json({ error: MONGO_UNAVAILABLE }, { status: 503 });
+    }
+    console.error(error);
+    return NextResponse.json({ error: "Failed to load employee." }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request, ctx: RouteCtx) {
   try {
     const { id } = await ctx.params;

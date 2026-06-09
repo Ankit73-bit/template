@@ -15,6 +15,17 @@ function errorMessageFromResponse(data: unknown, fallback: string): string {
   return fallback;
 }
 
+export async function getPayrollEmployee(id: string): Promise<PayrollEmployee | null> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  const data: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(errorMessageFromResponse(data, "Failed to load employee."));
+  }
+  const list = parsePayrollEmployees([data]);
+  return list[0] ?? null;
+}
+
 export async function listPayrollEmployees(): Promise<PayrollEmployee[]> {
   const res = await fetch(BASE, { cache: "no-store" });
   const data: unknown = await res.json().catch(() => null);

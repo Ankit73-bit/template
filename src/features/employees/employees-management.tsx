@@ -13,19 +13,49 @@ import {
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { EmptyState } from "@/components/empty-state";
-import { EmployeeFormDrawer } from "@/features/employees/employee-form-drawer";
 import { EmployeeDeleteDialog } from "@/features/employees/employee-delete-dialog";
 import { EmployeeExcelImportDialog } from "@/features/employees/employee-excel-import-dialog";
 import { createPayrollEmployeeColumns } from "@/features/employees/payroll-employee-table-columns";
 import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
-import type { PayrollEmployeeFormValues } from "@/lib/payroll-employee-schema";
 import {
   archivePayrollEmployee,
   listPayrollEmployees,
   restorePayrollEmployee,
-  updatePayrollEmployee,
 } from "@/lib/payroll-employees-api";
 import { uniqueSitesFromEmployees } from "@/lib/payroll-employees-logic";
+import type { VisibilityState } from "@/components/data-table/data-table";
+
+const DEFAULT_HIDDEN_COLUMNS: VisibilityState = {
+  stateCity: false,
+  siteName: false,
+  employmentStatusYn: false,
+  agencyName: false,
+  krcSiteBiometricIdNo: false,
+  lastWorkingDay: false,
+  empFatherSpouseName: false,
+  dateOfBirth: false,
+  gender: false,
+  bloodGroup: false,
+  employmentApplicationStatus: false,
+  educationCertificate: false,
+  aadharNumber: false,
+  panNumber: false,
+  uanPfNo: false,
+  esicNo: false,
+  bankName: false,
+  bankAccountNumber: false,
+  bankIfscNumber: false,
+  pccApplicationNo: false,
+  pccApplicationDate: false,
+  pccNo: false,
+  pccIssueDate: false,
+  policeVerificationValidity: false,
+  permanentAddress: false,
+  nextOfKinName: false,
+  nextOfKinContactNumber: false,
+  salary: false,
+  recordStatus: false,
+};
 
 function BranchFilter({
   table,
@@ -82,8 +112,6 @@ export function EmployeesManagement() {
   const [employees, setEmployees] = useState<PayrollEmployee[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<PayrollEmployee | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PayrollEmployee | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -117,11 +145,6 @@ export function EmployeesManagement() {
     [employees, includeArchived],
   );
 
-  const onEdit = useCallback((row: PayrollEmployee) => {
-    setSelectedEmployee(row);
-    setDrawerOpen(true);
-  }, []);
-
   const onArchive = useCallback((row: PayrollEmployee) => {
     setDeleteTarget(row);
     setDeleteOpen(true);
@@ -142,24 +165,10 @@ export function EmployeesManagement() {
   const columns = useMemo(
     () =>
       createPayrollEmployeeColumns({
-        onEdit,
         onArchive,
         onRestore,
       }),
-    [onEdit, onArchive, onRestore],
-  );
-
-  const handleEdit = useCallback(
-    async (values: PayrollEmployeeFormValues) => {
-      const id = selectedEmployee?.id;
-      if (!id) return;
-      const result = await updatePayrollEmployee(id, values);
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-      await refresh();
-    },
-    [selectedEmployee?.id, refresh],
+    [onArchive, onRestore],
   );
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -223,10 +232,11 @@ export function EmployeesManagement() {
           <CardTitle>Workforce directory</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-x-auto rounded-lg border border-sky-200/70 bg-card shadow-sm [-webkit-overflow-scrolling:touch] dark:border-sky-900/40 [&_table]:min-w-max [&_thead]:bg-sky-100/90 [&_th]:whitespace-nowrap [&_th]:border-sky-200/60 [&_th]:px-2 [&_th]:py-2.5 [&_td]:px-2 [&_td]:py-2 dark:[&_thead]:bg-sky-950/80 dark:[&_th]:border-sky-800/60">
+          <div className="styled-scrollbar overflow-x-auto rounded-lg border border-sky-200/70 bg-card shadow-sm [-webkit-overflow-scrolling:touch] dark:border-sky-900/40 [&_table]:min-w-max [&_thead]:bg-sky-100 [&_th]:whitespace-nowrap [&_th]:border-sky-200/60 [&_th]:px-2 [&_th]:py-2.5 [&_td]:px-2 [&_td]:py-2 dark:[&_thead]:bg-sky-950 dark:[&_th]:border-sky-800/60">
             <DataTable
               columns={columns}
               data={tableData}
+              initialColumnVisibility={DEFAULT_HIDDEN_COLUMNS}
               enableGlobalFilter
               globalFilterPlaceholder="Search NAME OF EMPLOYEE, AGENCY ID NO, PHONE NUMBER, SITE NAME…"
               pageSize={5}
@@ -293,16 +303,6 @@ export function EmployeesManagement() {
           </div>
         </CardContent>
       </Card>
-
-      <EmployeeFormDrawer
-        open={drawerOpen}
-        onOpenChange={(open) => {
-          setDrawerOpen(open);
-          if (!open) setSelectedEmployee(null);
-        }}
-        employee={selectedEmployee}
-        onEdit={handleEdit}
-      />
 
       <EmployeeDeleteDialog
         open={deleteOpen}

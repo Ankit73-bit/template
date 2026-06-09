@@ -46,11 +46,11 @@ export function DataTableToolbar<TData>({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-4 rounded-lg border border-border/50 bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
-      <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+      <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
         {enableGlobalFilter && (
           <Input
             placeholder={globalFilterPlaceholder}
@@ -92,22 +92,48 @@ export function DataTableToolbar<TData>({
             View
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
           <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {table
-            .getAllColumns()
-            .filter((c) => c.getCanHide())
-            .map((column) => (
-              <DropdownMenuCheckboxItem
-                key={column.id}
-                className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-              >
-                {column.id.replace(/_/g, " ")}
-              </DropdownMenuCheckboxItem>
-            ))}
+          {(() => {
+            const hideableCols = table
+              .getAllColumns()
+              .filter((c) => c.getCanHide());
+            const allVisible = hideableCols.every((c) => c.getIsVisible());
+            return (
+              <>
+                <DropdownMenuCheckboxItem
+                  className="text-xs font-semibold"
+                  checked={allVisible}
+                  onCheckedChange={(value) => {
+                    for (const col of hideableCols) {
+                      col.toggleVisibility(!!value);
+                    }
+                  }}
+                >
+                  {allVisible ? "Hide all" : "Show all"}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                {hideableCols.map((column) => {
+                  const label =
+                    (column.columnDef.meta as { label?: string } | undefined)
+                      ?.label ?? column.id.replace(/_/g, " ");
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="text-xs"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </>
+            );
+          })()}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { MoreHorizontal, Pencil, Archive, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,12 +47,41 @@ function cellValue(employee: PayrollEmployee, key: MasterEmployeeFieldKey): stri
   return String(raw);
 }
 
+const MANDATORY_COLUMN_ORDER: MasterEmployeeFieldKey[] = [
+  "sNo",
+  "agencyIdNo",
+  "nameOfEmployee",
+  "designation",
+  "dateOfJoining",
+  "phoneNumber",
+  "currentAddress",
+];
+
+const MANDATORY_SET = new Set<MasterEmployeeFieldKey>(MANDATORY_COLUMN_ORDER);
+
+function getOrderedFields() {
+  const fieldMap = new Map(
+    MASTER_DATA_EMPLOYEE_FIELDS.map((f) => [f.key, f]),
+  );
+
+  const ordered = MANDATORY_COLUMN_ORDER.map((key) => fieldMap.get(key)!);
+
+  for (const def of MASTER_DATA_EMPLOYEE_FIELDS) {
+    if (!MANDATORY_SET.has(def.key)) {
+      ordered.push(def);
+    }
+  }
+
+  return ordered;
+}
+
 export function createPayrollEmployeeColumns(handlers: {
-  onEdit: (row: PayrollEmployee) => void;
   onArchive: (row: PayrollEmployee) => void;
   onRestore: (row: PayrollEmployee) => void;
 }): ColumnDef<PayrollEmployee>[] {
-  const dataColumns: ColumnDef<PayrollEmployee>[] = MASTER_DATA_EMPLOYEE_FIELDS.map(
+  const orderedFields = getOrderedFields();
+
+  const dataColumns: ColumnDef<PayrollEmployee>[] = orderedFields.map(
     (def, index) => ({
       accessorKey: def.key,
       header: () => (
@@ -78,10 +108,11 @@ export function createPayrollEmployeeColumns(handlers: {
           </span>
         );
       },
-      enableHiding: def.key !== "nameOfEmployee",
+      enableHiding: !MANDATORY_SET.has(def.key),
       meta: {
         sticky: index === 0 ? "left" : undefined,
         minWidth: def.tableMinWidth ?? 100,
+        label: def.label,
       },
     }),
   );
@@ -100,7 +131,7 @@ export function createPayrollEmployeeColumns(handlers: {
           {formatCurrencyINR(row.getValue("salary"))}
         </span>
       ),
-      meta: { minWidth: 110 },
+      meta: { minWidth: 110, label: "ANNUAL SALARY (APP)" },
     },
     {
       id: "recordStatus",
@@ -123,7 +154,7 @@ export function createPayrollEmployeeColumns(handlers: {
         if (!value || value === "all") return true;
         return row.original.employmentStatus === value;
       },
-      meta: { minWidth: 100 },
+      meta: { minWidth: 100, label: "RECORD STATUS" },
     },
     {
       id: "actions",
@@ -139,14 +170,15 @@ export function createPayrollEmployeeColumns(handlers: {
         return (
           <div className="flex items-center justify-end gap-1">
             <Button
-              type="button"
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 px-2.5"
-              onClick={() => handlers.onEdit(e)}
+              asChild
             >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
+              <Link href={`/employees/${e.id}`}>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Link>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
