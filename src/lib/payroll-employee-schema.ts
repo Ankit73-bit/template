@@ -194,20 +194,19 @@ export const payrollEmployeeSchema = employeeDataSchema.extend({
 
 export type PayrollEmployee = z.infer<typeof payrollEmployeeSchema>;
 
-export const payrollEmployeeListItemSchema = payrollEmployeeSchema.omit({
-  salaryBasic: true,
-  salaryDa: true,
-  salaryHra: true,
-  salaryConveyance: true,
-  salaryEducationAllowance: true,
-  salaryLta: true,
-  salaryWashingAllowance: true,
-  salaryOtherAllowance: true,
-  salaryOtRate: true,
-  updatedAt: true,
-});
-
-export type PayrollEmployeeListItem = z.infer<typeof payrollEmployeeListItemSchema>;
+export type PayrollEmployeeListItem = Omit<
+  PayrollEmployee,
+  | "salaryBasic"
+  | "salaryDa"
+  | "salaryHra"
+  | "salaryConveyance"
+  | "salaryEducationAllowance"
+  | "salaryLta"
+  | "salaryWashingAllowance"
+  | "salaryOtherAllowance"
+  | "salaryOtRate"
+  | "updatedAt"
+>;
 
 export function toPayrollEmployeeListItem(employee: PayrollEmployee): PayrollEmployeeListItem {
   const {
