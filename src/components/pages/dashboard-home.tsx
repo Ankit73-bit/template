@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -39,16 +39,33 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/data-table/data-table";
 import { payrollRunColumns } from "@/components/data-table/columns/payroll-run-columns";
-import { demoPayrollRuns, formatCurrencyINR } from "@/lib/demo-data";
+import { EmptyState } from "@/components/empty-state";
+import type { PayrollRunRow } from "@/lib/payroll-run-types";
 
 export function DashboardHome() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const totals = useMemo(() => {
-    const headcount = 132;
-    const pending = 4;
-    const lastRun = demoPayrollRuns.find((r) => r.status === "paid");
-    return { headcount, pending, lastRun };
+  const [headcount, setHeadcount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/payroll-employees/count", { cache: "no-store" });
+        const data: unknown = await res.json().catch(() => null);
+        if (cancelled || !res.ok) return;
+        if (data && typeof data === "object" && "count" in data && typeof data.count === "number") {
+          setHeadcount(data.count);
+        }
+      } catch {
+        // Leave headcount as null when the API is unavailable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const payrollRuns: PayrollRunRow[] = [];
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -126,7 +143,7 @@ export function DashboardHome() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totals.headcount}</p>
+            <p className="text-2xl font-bold">{headcount ?? "—"}</p>
             <p className="text-xs text-muted-foreground">Active on payroll</p>
           </CardContent>
         </Card>
@@ -136,14 +153,8 @@ export function DashboardHome() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              {totals.lastRun
-                ? formatCurrencyINR(totals.lastRun.netPay)
-                : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {totals.lastRun?.period ?? "No closed runs"}
-            </p>
+            <p className="text-2xl font-bold">—</p>
+            <p className="text-xs text-muted-foreground">No closed runs</p>
           </CardContent>
         </Card>
         <Card>
@@ -152,7 +163,7 @@ export function DashboardHome() {
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totals.pending}</p>
+            <p className="text-2xl font-bold">—</p>
             <p className="text-xs text-muted-foreground">Approvals & exceptions</p>
           </CardContent>
         </Card>
@@ -162,8 +173,8 @@ export function DashboardHome() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">128</p>
-            <p className="text-xs text-muted-foreground">Issued last cycle</p>
+            <p className="text-2xl font-bold">—</p>
+            <p className="text-xs text-muted-foreground">No payslips issued yet</p>
           </CardContent>
         </Card>
       </div>
@@ -190,13 +201,21 @@ export function DashboardHome() {
               </Button>
             </CardHeader>
             <CardContent>
-              <DataTable
-                columns={payrollRunColumns}
-                data={demoPayrollRuns}
-                searchKey="period"
-                searchPlaceholder="Filter by period…"
-                pageSize={5}
-              />
+              {payrollRuns.length === 0 ? (
+                <EmptyState
+                  icon={Wallet}
+                  title="No payroll runs yet"
+                  description="Closed payroll cycles will appear here once you run payroll."
+                />
+              ) : (
+                <DataTable
+                  columns={payrollRunColumns}
+                  data={payrollRuns}
+                  searchKey="period"
+                  searchPlaceholder="Filter by period…"
+                  pageSize={5}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -209,10 +228,12 @@ export function DashboardHome() {
                 webhooks.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>Finance approved Apr 2026 payroll batch.</p>
-              <p>HR uploaded 6 attendance corrections for Field org.</p>
-              <p>Payroll exported bank file for primary disbursing account.</p>
+            <CardContent>
+              <EmptyState
+                icon={CalendarClock}
+                title="No activity yet"
+                description="Team actions and audit events will show here once connected to your workflow."
+              />
             </CardContent>
           </Card>
         </TabsContent>

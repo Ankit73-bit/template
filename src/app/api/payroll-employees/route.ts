@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { isMongoConnectionError, MONGO_UNAVAILABLE } from "@/lib/mongo-api-errors";
 import { payrollEmployeeFormAddSchema } from "@/lib/payroll-employee-schema";
-import { loadAllPayrollEmployeesFromDb } from "@/lib/payroll-employees-db-server";
+import { loadPayrollEmployeesListFromDb } from "@/lib/payroll-employees-db-server";
 import { createEmployeeWithAutoId } from "@/lib/payroll-employees-logic";
 import { PAYROLL_EMPLOYEES_COLLECTION } from "@/lib/payroll-employees-mongo-constants";
 
 export async function GET() {
   try {
-    const list = await loadAllPayrollEmployeesFromDb();
+    const list = await loadPayrollEmployeesListFromDb();
     return NextResponse.json(list);
   } catch (error) {
     if (isMongoConnectionError(error)) {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
     const db = await getDb();
     const col = db.collection(PAYROLL_EMPLOYEES_COLLECTION);
-    const list = await loadAllPayrollEmployeesFromDb();
+    const list = await loadPayrollEmployeesListFromDb();
     const result = createEmployeeWithAutoId(list, parsed.data);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 409 });

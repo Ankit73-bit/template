@@ -1,38 +1,6 @@
-import type { EmploymentStatus, PayrollStatus } from "@/lib/demo-data";
+import type { PayrollStatus } from "@/lib/payroll-run-types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const employmentLabels: Record<EmploymentStatus, string> = {
-  active: "Active",
-  on_leave: "On leave",
-  terminated: "Terminated",
-};
-
-const employmentVariant: Record<
-  EmploymentStatus,
-  "success" | "warning" | "destructive" | "secondary"
-> = {
-  active: "success",
-  on_leave: "warning",
-  terminated: "destructive",
-};
-
-export function EmploymentStatusBadge({
-  status,
-  className,
-}: {
-  status: EmploymentStatus;
-  className?: string;
-}) {
-  return (
-    <Badge
-      variant={employmentVariant[status]}
-      className={cn("font-medium capitalize", className)}
-    >
-      {employmentLabels[status]}
-    </Badge>
-  );
-}
 
 const payrollLabels: Record<PayrollStatus, string> = {
   draft: "Draft",

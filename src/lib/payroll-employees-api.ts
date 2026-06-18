@@ -1,8 +1,10 @@
 import {
+  parsePayrollEmployeeListItems,
   parsePayrollEmployees,
   type PayrollEmployee,
   type PayrollEmployeeFormAddValues,
   type PayrollEmployeeFormValues,
+  type PayrollEmployeeListItem,
 } from "@/lib/payroll-employee-schema";
 
 const BASE = "/api/payroll-employees";
@@ -26,7 +28,7 @@ export async function getPayrollEmployee(id: string): Promise<PayrollEmployee | 
   return list[0] ?? null;
 }
 
-export async function listPayrollEmployees(): Promise<PayrollEmployee[]> {
+export async function listPayrollEmployees(): Promise<PayrollEmployeeListItem[]> {
   const res = await fetch(BASE, { cache: "no-store" });
   const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
@@ -35,7 +37,7 @@ export async function listPayrollEmployees(): Promise<PayrollEmployee[]> {
   if (!Array.isArray(data)) {
     return [];
   }
-  return parsePayrollEmployees(data);
+  return parsePayrollEmployeeListItems(data);
 }
 
 export async function createPayrollEmployee(

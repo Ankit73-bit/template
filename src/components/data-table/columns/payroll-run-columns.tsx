@@ -3,8 +3,8 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { PayrollRunRow } from "@/lib/demo-data";
-import { formatCurrencyINR } from "@/lib/demo-data";
+import type { PayrollRunRow } from "@/lib/payroll-run-types";
+import { formatCurrencyINR } from "@/lib/format-currency";
 import { PayrollStatusBadge } from "@/components/data-table/status-badges";
 
 export const payrollRunColumns: ColumnDef<PayrollRunRow>[] = [

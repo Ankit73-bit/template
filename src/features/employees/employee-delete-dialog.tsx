@@ -9,12 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
+import type { PayrollEmployeeListItem } from "@/lib/payroll-employee-schema";
 
 type EmployeeDeleteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  employee: PayrollEmployee | null;
+  employee: PayrollEmployeeListItem | null;
   onConfirm: () => void | Promise<void>;
 };
 

@@ -26,7 +26,7 @@ export function nextAgencyIdFromList(list: Pick<PayrollEmployee, "agencyIdNo">[]
 }
 
 export function createEmployeeWithAutoId(
-  list: PayrollEmployee[],
+  list: Pick<PayrollEmployee, "agencyIdNo">[],
   values: PayrollEmployeeFormAddValues,
 ): { created: PayrollEmployee } | { error: string } {
   const salary = annualSalaryFromMonthlyComponents(values);
@@ -114,7 +114,9 @@ export function restoreEmployeeInList(list: PayrollEmployee[], id: string): Payr
   );
 }
 
-export function uniqueSitesFromEmployees(list: PayrollEmployee[]): string[] {
+export function uniqueSitesFromEmployees(
+  list: Pick<PayrollEmployee, "siteName">[],
+): string[] {
   const set = new Set(list.map((e) => e.siteName.trim()).filter(Boolean));
   return [...set].sort((a, b) => a.localeCompare(b));
 }

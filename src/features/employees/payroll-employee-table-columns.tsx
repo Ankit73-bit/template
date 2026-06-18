@@ -12,13 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCurrencyINR } from "@/lib/demo-data";
+import { formatCurrencyINR } from "@/lib/format-currency";
 import {
   MASTER_DATA_EMPLOYEE_FIELDS,
   labelForMasterField,
 } from "@/lib/payroll-employee-master-fields";
 import type { MasterEmployeeFieldKey } from "@/lib/payroll-employee-master-fields";
-import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
+import type { PayrollEmployeeListItem } from "@/lib/payroll-employee-schema";
 import { EmploymentActiveBadge } from "@/features/employees/employment-active-badge";
 
 function formatJoiningDate(isoDate: string): string {
@@ -32,7 +32,7 @@ function formatJoiningDate(isoDate: string): string {
   }).format(new Date(t));
 }
 
-function cellValue(employee: PayrollEmployee, key: MasterEmployeeFieldKey): string {
+function cellValue(employee: PayrollEmployeeListItem, key: MasterEmployeeFieldKey): string {
   const raw = employee[key];
   if (raw == null || raw === "") return "—";
   if (key === "dateOfJoining" || key === "dateOfBirth" || key === "pccApplicationDate" || key === "pccIssueDate") {
@@ -76,12 +76,12 @@ function getOrderedFields() {
 }
 
 export function createPayrollEmployeeColumns(handlers: {
-  onArchive: (row: PayrollEmployee) => void;
-  onRestore: (row: PayrollEmployee) => void;
-}): ColumnDef<PayrollEmployee>[] {
+  onArchive: (row: PayrollEmployeeListItem) => void;
+  onRestore: (row: PayrollEmployeeListItem) => void;
+}): ColumnDef<PayrollEmployeeListItem>[] {
   const orderedFields = getOrderedFields();
 
-  const dataColumns: ColumnDef<PayrollEmployee>[] = orderedFields.map(
+  const dataColumns: ColumnDef<PayrollEmployeeListItem>[] = orderedFields.map(
     (def, index) => ({
       accessorKey: def.key,
       header: () => (

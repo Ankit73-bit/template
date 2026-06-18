@@ -121,8 +121,7 @@ export function EmployeeExcelImportDialog({ open, onOpenChange, onImported }: Pr
           <DialogTitle>Import employees from Excel</DialogTitle>
           <DialogDescription>
             Matches your KRC file &quot;Master Data - Agency Manpower&quot; (34 columns with
-            exact header names). Download the template — it includes 2 demo rows from your sheet
-            layout.
+            exact header names). Download the template with the correct headers, then fill in your rows.
             Rows with invalid data are listed below and are not imported.
           </DialogDescription>
         </DialogHeader>

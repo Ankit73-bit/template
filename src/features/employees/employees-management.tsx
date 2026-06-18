@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/empty-state";
 import { EmployeeDeleteDialog } from "@/features/employees/employee-delete-dialog";
 import { EmployeeExcelImportDialog } from "@/features/employees/employee-excel-import-dialog";
 import { createPayrollEmployeeColumns } from "@/features/employees/payroll-employee-table-columns";
-import type { PayrollEmployee } from "@/lib/payroll-employee-schema";
+import type { PayrollEmployeeListItem } from "@/lib/payroll-employee-schema";
 import {
   archivePayrollEmployee,
   listPayrollEmployees,
@@ -61,7 +61,7 @@ function BranchFilter({
   table,
   branches,
 }: {
-  table: Table<PayrollEmployee>;
+  table: Table<PayrollEmployeeListItem>;
   branches: string[];
 }) {
   const column = table.getColumn("siteName");
@@ -87,7 +87,7 @@ function BranchFilter({
   );
 }
 
-function StatusFilter({ table }: { table: Table<PayrollEmployee> }) {
+function StatusFilter({ table }: { table: Table<PayrollEmployeeListItem> }) {
   const column = table.getColumn("employmentStatus");
   if (!column) return null;
   return (
@@ -109,11 +109,11 @@ function StatusFilter({ table }: { table: Table<PayrollEmployee> }) {
 }
 
 export function EmployeesManagement() {
-  const [employees, setEmployees] = useState<PayrollEmployee[]>([]);
+  const [employees, setEmployees] = useState<PayrollEmployeeListItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<PayrollEmployee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PayrollEmployeeListItem | null>(null);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -145,13 +145,13 @@ export function EmployeesManagement() {
     [employees, includeArchived],
   );
 
-  const onArchive = useCallback((row: PayrollEmployee) => {
+  const onArchive = useCallback((row: PayrollEmployeeListItem) => {
     setDeleteTarget(row);
     setDeleteOpen(true);
   }, []);
 
   const onRestore = useCallback(
-    async (row: PayrollEmployee) => {
+    async (row: PayrollEmployeeListItem) => {
       const result = await restorePayrollEmployee(row.id);
       if (!result.ok) {
         window.alert(result.error);

@@ -6,7 +6,6 @@ import {
 import {
   buildExcelHeaderIndex,
   MASTER_DATA_EMPLOYEE_FIELDS,
-  MASTER_DATA_TEMPLATE_DEMO_ROWS,
   MASTER_DATA_TEMPLATE_HEADERS,
   type MasterEmployeeFieldKey,
 } from "@/lib/payroll-employee-master-fields";
@@ -14,14 +13,12 @@ import {
 export {
   MASTER_DATA_EMPLOYEE_FIELDS,
   MASTER_DATA_TEMPLATE_HEADERS,
-  MASTER_DATA_TEMPLATE_DEMO_ROWS,
   labelForMasterField,
 } from "@/lib/payroll-employee-master-fields";
 
 export type ExcelImportFieldKey = MasterEmployeeFieldKey;
 
 export const EMPLOYEE_IMPORT_TEMPLATE_HEADERS = MASTER_DATA_TEMPLATE_HEADERS;
-export const EMPLOYEE_IMPORT_TEMPLATE_DEMO_ROWS = MASTER_DATA_TEMPLATE_DEMO_ROWS;
 
 export function normalizeExcelHeader(header: unknown): string {
   return String(header ?? "")
@@ -303,10 +300,7 @@ export function validateImportRows(rows: ParsedExcelEmployeeRow[]): ExcelRowVali
 
 export function downloadImportTemplate(): void {
   const wb = XLSX.utils.book_new();
-  const sheetData: (string | number)[][] = [
-    [...MASTER_DATA_TEMPLATE_HEADERS],
-    ...MASTER_DATA_TEMPLATE_DEMO_ROWS,
-  ];
+  const sheetData: (string | number)[][] = [[...MASTER_DATA_TEMPLATE_HEADERS]];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
   ws["!cols"] = MASTER_DATA_EMPLOYEE_FIELDS.map((f) => ({
     wch: Math.min(52, Math.max(10, Math.ceil((f.tableMinWidth ?? 100) / 7))),

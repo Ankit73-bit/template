@@ -194,6 +194,52 @@ export const payrollEmployeeSchema = employeeDataSchema.extend({
 
 export type PayrollEmployee = z.infer<typeof payrollEmployeeSchema>;
 
+export const payrollEmployeeListItemSchema = payrollEmployeeSchema.omit({
+  salaryBasic: true,
+  salaryDa: true,
+  salaryHra: true,
+  salaryConveyance: true,
+  salaryEducationAllowance: true,
+  salaryLta: true,
+  salaryWashingAllowance: true,
+  salaryOtherAllowance: true,
+  salaryOtRate: true,
+  updatedAt: true,
+});
+
+export type PayrollEmployeeListItem = z.infer<typeof payrollEmployeeListItemSchema>;
+
+export function toPayrollEmployeeListItem(employee: PayrollEmployee): PayrollEmployeeListItem {
+  const {
+    salaryBasic,
+    salaryDa,
+    salaryHra,
+    salaryConveyance,
+    salaryEducationAllowance,
+    salaryLta,
+    salaryWashingAllowance,
+    salaryOtherAllowance,
+    salaryOtRate,
+    updatedAt,
+    ...rest
+  } = employee;
+  void salaryBasic;
+  void salaryDa;
+  void salaryHra;
+  void salaryConveyance;
+  void salaryEducationAllowance;
+  void salaryLta;
+  void salaryWashingAllowance;
+  void salaryOtherAllowance;
+  void salaryOtRate;
+  void updatedAt;
+  return rest;
+}
+
+export function parsePayrollEmployeeListItems(raw: unknown): PayrollEmployeeListItem[] {
+  return parsePayrollEmployees(raw).map(toPayrollEmployeeListItem);
+}
+
 export function payrollEmployeeToFormValues(employee: PayrollEmployee): PayrollEmployeeFormValues {
   const { id, salary, deletedAt, createdAt, updatedAt, ...rest } = employee;
   void id;
